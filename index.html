@@ -513,6 +513,7 @@
 <!-- what the fisherman thinks, in the Ocean style (edit this file to change his lines) -->
 <script src="fisherman-lines.js"></script>
 <script src="camper-lines.js"></script>
+<script src="beach-lines.js"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -1699,7 +1700,7 @@ const Sky = (() => {
       .replace(/\{day\}/g, new Date().toLocaleDateString('en-US', { weekday: 'long' })).replace(/\{fish\}/g, extra || 'fish');
   }
   function pickLine(groups, extra) {
-    const L = (forest ? window.TW_CAMP_LINES : window.TW_LINES) || {}, pool = [];
+    const L = (forest ? window.TW_CAMP_LINES : tropic ? window.TW_BEACH_LINES : window.TW_LINES) || {}, pool = [];
     for (const [g, weight] of groups) for (const s of (L[g] || [])) for (let i = 0; i < weight; i++) pool.push(s);
     let fresh = pool.filter(s => !talk.recent.includes(s));
     if (!fresh.length) fresh = pool;
@@ -1719,12 +1720,13 @@ const Sky = (() => {
     if (!holding()) groups.push(['any', 1]);       // in heavy rain and thunderstorms, only weather lines
     if (sea && sea.pose === 'fish') groups.push(['fishing', 1]);
     if (forest) groups.push([forest.inside ? 'tent' : 'camping', 1]);
+    if (tropic) groups.push([tropic.inside ? 'hut' : 'hammock', 1]);
     return pickLine(groups);
   }
   // in heavy rain, thunderstorms and hurricanes he's holding on (or in the tent), so he only talks about the weather
   const holding = () => sea ? sea.pose === 'hold' : !!(sc.swirl || sc.storm || mode.kind === 'heavy');
   function talkTick(t) {
-    const who = sea || forest;
+    const who = sea || forest || tropic;
     if (!who || stage.ev) {   // quiet during a major random event
       talk.react = null;
       // a thought that comes due during a major random event is skipped: start his timer over instead
@@ -1761,13 +1763,13 @@ const Sky = (() => {
   }
   // His thought bubble: a speech bubble like Nessie's (rounded box, pointed tail to his head), wrapping long lines.
   function drawThought(t, hx, hy) {
-    const k = Math.max(.75, sea ? sea.bs : forest.s), a = Math.min(1, (t - talk.start) / .4, (talk.start + talk.dur - t) / .5);
+    const k = Math.max(.75, sea ? sea.bs : (forest || tropic).s), a = Math.min(1, (t - talk.start) / .4, (talk.start + talk.dur - t) / .5);
     if (a <= 0) return;
     const fs = Math.max(14, Math.round(17 * k)), font = `600 ${fs}px "Segoe UI", Inter, Roboto, Arial, sans-serif`;
     g.font = font;
     // where it can go: above the boat (or the campsite), clear of the town name on the left and the forecast boxes on
     // the right
-    const wide = Wd > Hd, lo = wide ? Wd * (forest ? .17 : .31) : Wd * (forest ? .05 : .48), hi = wide ? Wd * .455 : Wd * .97, maxW = Math.max(120, Math.min(hi - lo - 24 * k, 300 * k));
+    const wide = Wd > Hd, lo = wide ? Wd * (forest || tropic ? .17 : .31) : Wd * (forest || tropic ? .05 : .48), hi = wide ? Wd * .455 : Wd * .97, maxW = Math.max(120, Math.min(hi - lo - 24 * k, 300 * k));
     const words = talk.line.split(' '), lines = [];
     let cur = '';
     for (const w of words) { const test = cur ? cur + ' ' + w : w; if (g.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test; }
@@ -2806,7 +2808,7 @@ const Sky = (() => {
   function tropicTick(dt, t) {   // his drink: resting on his belly → up to his mouth for a sip → back down
     const p = tropic.sip; p.t += dt;
     if (p.st === 'rest' && p.t > p.dur) { p.st = 'sip'; p.t = 0; }
-    else if (p.st === 'sip' && p.t > 2.6) { p.st = 'rest'; p.t = 0; p.dur = rnd(7, 13); }
+    else if (p.st === 'sip' && p.t > 2.6) { p.st = 'rest'; p.t = 0; p.dur = rnd(7, 13); if (Math.random() < .25) talk.react = 'snack'; }   // (now and then he says how good it was)
   }
   function drawTropic(ts) {
     const b = tropic, t = ts / 1000, s = b.s, C = b.C, sy = Hd / 1080, rough = b.wind || (sc.rain ? .02 : 0);
@@ -2831,6 +2833,10 @@ const Sky = (() => {
     if (b.night || b.golden) drawTorches(b, t);
     // a few more palms at the sides, nearer to us
     for (const [u, dy, h, lean, sz, ph] of b.sidePalms) palm(b, t, u * Wd, b.gy + dy * s, h * s, lean * s, ph, sz);
+    if (talk.line) {   // his speech bubble, from his head in the hammock or in the hut door
+      const [hx, hy] = b.inside || !b.headAt ? [b.hx + 17 * s, b.gy - 62 * s] : b.headAt;
+      drawThought(t, hx, hy - 10 * s);
+    }
   }
   // a palm from its base (x, y): a curving ringed trunk leaning by dx, with drooping fronds that sway in the breeze
   // and stream out in the wind; returns the trunk's point at a height
@@ -2902,6 +2908,7 @@ const Sky = (() => {
     g.strokeStyle = C.straw; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(dk[0] + 1 * s, dk[1] - 4 * s); g.lineTo(dk[0] - 4 * s, dk[1] - 13 * s); g.stroke();
     g.fillStyle = C.parasol; g.beginPath(); g.moveTo(dk[0] + 3 * s, dk[1] - 4 * s); g.lineTo(dk[0] + 7 * s, dk[1] - 14 * s); g.lineTo(dk[0] + 12 * s, dk[1] - 9 * s); g.closePath(); g.fill();   // little paper umbrella
     // his head, resting back on the hammock end
+    b.headAt = [hx - 2 * s, hy - 19 * s];   // (for his speech bubble)
     g.translate(hx - 2 * s, hy - 19 * s); g.scale(s, s); drawBeachHead(b, t, .45, 1);
     g.restore();
   }
@@ -3031,7 +3038,7 @@ const Sky = (() => {
       // Ocean and Forest styles: the next one in 2½ to 3½ minutes. Sky style (biplane only): the next biplane 5 minutes after this one started.
       stage.ev = null; stage.last = e.kind; stage.next = SHOWCASE ? t + 3 : sea || forest ? t + rnd(150, 210) : Math.max(t + 30, e.t0 + 300);
       if (e.kind !== 'biplane') stage.lastOther = e.kind;
-      if (over && e.say && (sea || forest)) { talk.line = e.say; talk.isCatch = true; talk.start = t; talk.dur = 6; }   // his reaction
+      if (over && e.say && (sea || forest || tropic)) { talk.line = e.say; talk.isCatch = true; talk.start = t; talk.dur = 6; }   // his reaction
       else talk.next = Math.max(talk.next, t + 8);
       return;
     }
@@ -3372,10 +3379,10 @@ const Sky = (() => {
   }
   function drawSpeech(text, hx, hy, a) {   // a speech bubble (rounded box with a pointed tail) above and right of a head
     if (a <= 0) return;
-    const k = Math.max(.75, sea ? sea.bs : forest.s), fs = Math.max(14, Math.round(17 * k));
+    const k = Math.max(.75, sea ? sea.bs : (forest || tropic).s), fs = Math.max(14, Math.round(17 * k));
     g.save(); g.globalAlpha = a; g.font = `600 ${fs}px "Segoe UI", Inter, Roboto, Arial, sans-serif`;
     const tw = g.measureText(text).width, pw = 14 * k, bw = tw + pw * 2, bh = fs + 20 * k;
-    const bx = Math.min(Math.max(hx + 14 * k, 8), (forest && Wd > Hd ? Wd * .455 : Wd - 8) - bw), by = hy - 46 * k - bh;   // (in the Forest, clear of the forecast boxes)
+    const bx = Math.min(Math.max(hx + 14 * k, 8), ((forest || tropic) && Wd > Hd ? Wd * .455 : Wd - 8) - bw), by = hy - 46 * k - bh;   // (in the Forest, clear of the forecast boxes)
     g.fillStyle = 'rgba(255,255,255,.96)'; g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 10 * k;
     g.beginPath(); g.roundRect(bx, by, bw, bh, 12 * k); g.fill();
     g.beginPath(); g.moveTo(bx + 16 * k, by + bh - 2); g.lineTo(hx + 6 * k, hy - 12 * k); g.lineTo(bx + 34 * k, by + bh - 2); g.closePath(); g.fill();
@@ -3779,7 +3786,7 @@ const Sky = (() => {
     eventsTick(t);
     if (tornado) for (const d of [...tornado.debris, ...tornado.spray]) d.a += d.sp * dt;   // whirling round the base
     if (sea && sea.pose === 'fish') { if (!saluting()) fishingTick(dt); jumpTick(dt); }   // he stops to salute the flag
-    if (sea || forest) talkTick(t);
+    if (sea || forest || tropic) talkTick(t);
     if (sea && sea.dolphinsOk) podTick(dt);
     if (sea) { diverTick(dt); yachtTick(dt); }
     if (forest) forestTick(dt, t);
