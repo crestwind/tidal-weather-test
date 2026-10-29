@@ -239,4 +239,31 @@ window.TW_CAMP_LINES = {
     "Okay, just one more.",
     "Ten out of ten.",
   ],
+
+  // ---------- Halloween (when the Halloween holiday theme is on) ----------
+  halloween: [
+    "Happy Halloween!",
+    "Trick or treat!",
+    "Who wants to hear a ghost story?",
+    "Did you hear something in the woods?",
+    "Perfect night for a campfire story.",
+    "I'm not scared. You're scared.",
+    "Marshmallows: the best Halloween candy.",
+    "Something's watching from the trees…",
+    "Save me some candy, {town}!",
+    "Watch out for little ghosts on the roads tonight!",
+  ],
+  witch: [
+    "Was that… a witch?!",
+    "Nice broom!",
+    "Happy Halloween to you too!",
+    "She didn't even wave.",
+    "Fly safe up there!",
+  ],
+  ghost: [
+    "Did you see that?!",
+    "Nope. Nope nope nope.",
+    "I knew these woods were haunted!",
+    "Boo to you too!",
+  ],
 };

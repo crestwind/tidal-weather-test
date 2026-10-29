@@ -250,4 +250,31 @@ window.TW_LINES = {
     "That's not a fish.",
     "The fish are playing tricks on me.",
   ],
+
+  // ---------- Halloween (when the Halloween holiday theme is on) ----------
+  halloween: [
+    "Happy Halloween!",
+    "Trick or treat!",
+    "Spooky waters tonight.",
+    "I'm dressed as a fisherman. Very convincing.",
+    "Keep an eye out for ghost ships.",
+    "Anybody else hear that?",
+    "Save me some candy, {town}!",
+    "The fish are in costume too. As fish.",
+    "Who's handing out the full-size candy bars?",
+    "Watch out for little ghosts on the roads tonight!",
+  ],
+  witch: [
+    "Was that… a witch?!",
+    "Nice broom!",
+    "Happy Halloween to you too!",
+    "She didn't even wave.",
+    "Fly safe up there!",
+  ],
+  ghostship: [
+    "Is that ship… see-through?",
+    "I'm not fishing over there.",
+    "That ship's been out there a long time…",
+    "Ahoy?…",
+  ],
 };

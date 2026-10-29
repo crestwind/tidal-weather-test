@@ -453,7 +453,7 @@
       <select id="displaySel"><option value="normal">Sky (default)</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="tropical" disabled>Tropical (coming soon)</option><option value="city" disabled>City (coming soon)</option><option value="waterfall" disabled>Waterfall (coming soon)</option><option value="village" disabled>Village (coming soon)</option><option value="mirror">Smart mirror (black background, no animation)</option></select>
     </label>
     <label>Holiday theme
-      <select id="holidaySel"><option value="off">None</option><option value="auto" disabled>Automatic: each holiday in season (coming soon)</option><option value="newyear" disabled>New Year's (coming soon)</option><option value="valentine" disabled>Valentine's Day (coming soon)</option><option value="stpatrick" disabled>St. Patrick's Day (coming soon)</option><option value="easter" disabled>Easter (coming soon)</option><option value="july4" disabled>Fourth of July (coming soon)</option><option value="halloween" disabled>Halloween (coming soon)</option><option value="thanksgiving" disabled>Thanksgiving (coming soon)</option><option value="christmas" disabled>Christmas (coming soon)</option></select>
+      <select id="holidaySel"><option value="off">None</option><option value="auto">Automatic (each holiday in its season)</option><option value="newyear" disabled>New Year's (coming soon)</option><option value="valentine" disabled>Valentine's Day (coming soon)</option><option value="stpatrick" disabled>St. Patrick's Day (coming soon)</option><option value="easter" disabled>Easter (coming soon)</option><option value="july4" disabled>Fourth of July (coming soon)</option><option value="halloween">Halloween</option><option value="thanksgiving" disabled>Thanksgiving (coming soon)</option><option value="christmas" disabled>Christmas (coming soon)</option></select>
     </label>
     <div class="row">
       <label>Background scene
@@ -1724,6 +1724,7 @@ const Sky = (() => {
     if (sea && sea.pose === 'fish') groups.push(['fishing', 1]);
     if (forest) groups.push([forest.inside ? 'tent' : 'camping', 1]);
     if (tropic) groups.push([tropic.inside ? 'hut' : 'hammock', 1]);
+    if (hallo && !holding()) groups.push(['halloween', 2]);
     return pickLine(groups);
   }
   // in heavy rain, thunderstorms and hurricanes he's holding on (or in the tent), so he only talks about the weather
@@ -1758,7 +1759,7 @@ const Sky = (() => {
     let line = '', isCatch = false;
     if (talk.react) {   // just landed something: always grumble about a boot, cheer about 1 fish in 7
       const c = talk.react; talk.react = null;
-      if (c === 'boot') line = pickLine([['boot', 1]]); else if (c === 'snack') line = pickLine([['snack', 1]]); else if (Math.random() < .15) line = pickLine([['catch', 1]], c.name);
+      if (c === 'boot') line = pickLine([['boot', 1]]); else if (typeof c === 'string') line = pickLine([[c, 1]]); else if (Math.random() < .15) line = pickLine([['catch', 1]], c.name);
       isCatch = !!line;
     }
     if (!line && t > talk.next && !SHOWCASE) line = chooseThought();   // no regular thoughts in showcase mode
@@ -1860,6 +1861,7 @@ const Sky = (() => {
     for (let px = -66; px <= 60; px += 21) { x.beginPath(); x.moveTo(px, -25 - px * .074); x.lineTo(px, -33 - px * .074); x.stroke(); }
     drawFisher(x, t);
     if (sea.tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = sea.tint; x.fillRect(-ox, -oy, W, H); x.globalCompositeOperation = 'source-over'; }
+    if (hallo) drawPumpkin(x, 58, -34, 10.5, true, hallo.dim, t);   // Halloween: a jack-o'-lantern on the deck at the bow
     if (sea.lantern) {   // the lantern and cabin windows stay bright after the tint
       const glow = x.createRadialGradient(-36, -96, 1, -36, -96, 26);
       glow.addColorStop(0, 'rgba(255,220,140,.9)'); glow.addColorStop(1, 'rgba(255,200,120,0)');
@@ -1886,6 +1888,7 @@ const Sky = (() => {
       if (Math.abs(look) < .75) { x.beginPath(); x.arc(ex - 2, hy - 1.2, .75, 0, 7); x.fill(); }
       x.beginPath(); x.arc(ex + 2 * (look < -.75 ? -1 : 1), hy - 1.2, .75, 0, 7); x.fill();
       x.fillStyle = '#d99f78'; x.beginPath(); x.ellipse(ex + look * 1.8, hy + .7, 1.2, 1, 0, 0, 7); x.fill();                       // nose
+      if (hallo) { witchHat(x, hx, hy - (sea.coat === 'rain' ? 7 : 5.5), .85); return; }                                          // Halloween
       if (sea.coat === 'rain') return;
       if (sea.coat === 'snow') { x.fillStyle = '#e8e8e8'; x.beginPath(); x.arc(hx, hy - 2, 7.2, Math.PI, 0); x.fill(); x.beginPath(); x.arc(hx, hy - 10, 2.6, 0, 7); x.fill(); }   // beanie
       else { x.fillStyle = '#8a6d3b'; x.fillRect(hx - 10, hy - 6, 20, 2.5); x.fillRect(hx - 6, hy - 12, 12, 7); }                       // bucket hat
@@ -1963,6 +1966,7 @@ const Sky = (() => {
     base.addColorStop(0, `rgb(${sea.pal[0]})`); base.addColorStop(1, `rgb(${sea.pal[1]})`);
     g.fillStyle = base; g.fillRect(0, sea.top - 2, Wd, Hd - sea.top + 2);
     drawLighthouse(t);   // on the horizon, behind every wave
+    if (hallo && hallo.ship) drawGhostShip(t);
     if (tornado) drawSpray(t);
     for (let i = 0; i <= b; i++) { drawLayer(L[i], t); drawDolphins(t, i); drawSwimmers(t, i); if (i === 1 && stage.ev && stage.ev.kind === 'nessie') drawNessie(t); }
     // the boat rides layer b, rising, falling and tilting with the wave under it
@@ -2158,6 +2162,7 @@ const Sky = (() => {
       if (!lean) { g.drawImage(img, 0, 0); return; }
       g.save(); g.transform(1, 0, -lean, 1, lean * base, 0); g.drawImage(img, 0, 0); g.restore();
     };
+    if (hallo && hallo.ghost) drawGhost(f, t);   // Halloween: rising from behind the middle row of trees
     layer(f.mid, f.midBase, forestLean(f, t, 0) * .6);
     if (ev && ev.kind === 'bigfoot') drawBigfoot(f, ev, t);   // in front of the middle row, behind everything else
     if (f.mist) {   // (thinning out just below the treeline, so there's no hard edge on the ground)
@@ -2211,6 +2216,10 @@ const Sky = (() => {
     } else if (lit && !hiding) drawCamper(f, t, lx);
     if (coon) drawRaccoon(f, ev, t, lx);
     drawCampfire(f, t);
+    if (hallo) {   // jack-o'-lanterns by the fire, and one by the tent door
+      for (const [dx, r] of [[50, 13], [74, 9.5]]) drawPumpkin(g, f.fx + dx * s, f.gy + 3 * s, r * s, lit, hallo.dim, t);
+      drawPumpkin(g, tx - 46 * k, tb + 1 * k, 12 * k, lit, hallo.dim, t);
+    }
     if (ev && ev.kind === 'skunk') drawSkunk(f, ev, t, lx);   // in front of the log and the fire
     // the fire's warm glow over the clearing, the camper and the tent
     if (lit) {
@@ -2264,6 +2273,7 @@ const Sky = (() => {
     g.fillStyle = C.trim; g.beginPath(); g.moveTo(0, -84); g.lineTo(-30, 0); g.lineTo(-40, 0); g.lineTo(-5, -78); g.closePath(); g.fill();
     g.beginPath(); g.moveTo(0, -84); g.lineTo(30, 0); g.lineTo(40, 0); g.lineTo(5, -78); g.closePath(); g.fill();
     g.strokeStyle = C.door; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -100); g.lineTo(0, -110); g.moveTo(56, -108); g.lineTo(56, -117); g.stroke();   // pole tips
+    if (hallo) cobweb(g, 55, -106, 34, 1.05, 2.95, t, f.night);   // Halloween: a cobweb under the back of the ridge
     if (peek != null) {
       // He sits just inside the doorway: shoulders in his plaid jacket, one hand holding the flap, looking out one way
       // and then the other. Now and then he sits back into the tent and fades into its shadow (or its lantern light).
@@ -2420,15 +2430,8 @@ const Sky = (() => {
       const w = Math.sin(b.ph);   // wingbeat: 1 up, -1 down
       const by = fl.kind === 'bats' ? b.y + Math.max(0, Math.sin(t * b.wf * .35 + b.wp)) ** 4 * 260 * Hd / 1080 + Math.sin(t * b.wf * 2 + b.wp) * 9 * Hd / 1080 : b.y;
       g.save(); g.translate(b.x, by); g.scale(d * k, k); g.lineCap = 'round';
-      if (fl.kind === 'bats') {   // a bat seen from below: pointed ears, wings spread both ways with a scalloped edge, beating fast
-        const p = new Path2D();
-        p.ellipse(0, .5, 2.4, 3.6, 0, 0, 7); p.arc(0, -3, 2.2, 0, 7);
-        for (const sg of [-1, 1]) {
-          p.moveTo(sg * .4, -4.5); p.lineTo(sg * 1.4, -7.5); p.lineTo(sg * 2, -4); p.closePath();   // ear
-          p.moveTo(sg * 1.5, -1.5); p.lineTo(sg * 6, -5 - 3 * w); p.lineTo(sg * 14, -3 - 6 * w);   // wing, up to the wrist and out to the tip
-          p.quadraticCurveTo(sg * 12, -2 * w, sg * 10.5, 2 - 2 * w); p.quadraticCurveTo(sg * 9, -w, sg * 7, 2.5 - w);
-          p.quadraticCurveTo(sg * 5, .5, sg * 2, 2.5); p.closePath();
-        }
+      if (fl.kind === 'bats') {   // a bat seen from below (see batPath), beating its wings fast
+        const p = batPath(w);
         g.strokeStyle = 'rgba(150,170,210,.45)'; g.lineWidth = 1.6; g.stroke(p);   // a faint moonlit edge (under the fill, so only the outline shows)
         g.fillStyle = '#0b0c10'; g.fill(p);
       } else if (fl.geese) {
@@ -2975,6 +2978,269 @@ const Sky = (() => {
       gl.addColorStop(0, `rgba(255,160,70,${b.night ? .35 : .18})`); gl.addColorStop(1, 'rgba(255,160,70,0)');
       g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(tx - 70 * s, ty - 156 * s, 140 * s, 140 * s); g.restore();
     }
+  }
+
+  /* ---------- Holiday themes ---------- */
+  // Decorations added on top of whichever display style is picked (none in Smart mirror), chosen under Holiday theme in
+  // settings; Automatic shows each holiday in its season (Halloween: October 24-31).
+  // Halloween: a big orange harvest moon on clear nights, bats flitting across the sky in the evening and at night, a
+  // witch on her broom (her cat riding behind) flying past now and then (across the moon at night), and glowing
+  // jack-o'-lanterns: along the bottom in the Sky style, in the fisherman's boat, by the campfire. The Ocean adds a
+  // ghost ship drifting along the horizon now and then and gives the fisherman a witch hat; the Forest adds a cobweb on
+  // the tent and a ghost that rises from behind the trees to look around. The characters have Halloween lines too.
+  // Testing: ?holiday=halloween turns it on; ?witch, ?bats, ?ghostship and ?ghost bring those in a few seconds.
+  let hallo = null;
+  function holidayNow() {
+    if (S.holiday !== 'auto') return S.holiday || 'off';
+    const d = new Date();
+    return d.getMonth() === 9 && d.getDate() >= 24 ? 'halloween' : 'off';
+  }
+  function buildHalloween() {
+    if (holidayNow() !== 'halloween' || S.display === 'mirror') return null;
+    const { tod } = mode, now = performance.now() / 1000, wide = Wd > Hd;
+    const first = (n, lo, hi) => now + (SHOWCASE || new RegExp('[?&]' + n + '\\b').test(location.search) ? rnd(2, 5) : rnd(lo, hi));
+    const h = { night: tod === 'night', dusk: tod !== 'day', k: Math.min(Hd / 1080, Wd / 700),
+      dim: tod === 'night' ? .42 : tod === 'golden' ? .25 : sc.tone === 'storm' ? .35 : sc.tone === 'dark' ? .2 : 0,   // how much to darken the pumpkins
+      bats: null, witch: null, ship: null, ghost: null,
+      next: { bats: first('bats', 8, 25), witch: first('witch', 40, 100), ship: first('ghostship', 30, 90), ghost: first('ghost', 30, 90) } };
+    // the Sky style's jack-o'-lanterns: [across the screen, size], in the open corner under the temperature and between
+    // it and the forecast boxes
+    h.lanterns = sea || forest || tropic ? [] : wide ? [[.035, 1.1], [.075, .8], [.11, .95], [.4, .85], [.435, 1.15]] : [[.06, 1], [.15, .8], [.85, .85], [.94, 1.1]];
+    return h;
+  }
+  function harvestMoonSprite() {   // a big full moon, glowing orange
+    const r = Hd * .062, R = Math.round(r * 4), [c, x] = mk(R * 2, R * 2);
+    const halo = x.createRadialGradient(R, R, r * .9, R, R, R);
+    halo.addColorStop(0, 'rgba(255,150,60,.38)'); halo.addColorStop(.35, 'rgba(255,120,40,.12)'); halo.addColorStop(1, 'rgba(255,120,40,0)');
+    x.fillStyle = halo; x.fillRect(0, 0, R * 2, R * 2);
+    const tex = moonTexture(r), N = tex.width, [mc, m] = mk(N, N);
+    m.drawImage(tex, 0, 0); m.globalCompositeOperation = 'multiply';
+    const og = m.createRadialGradient(N * .42, N * .4, 0, N / 2, N / 2, r);
+    og.addColorStop(0, '#ffc070'); og.addColorStop(1, '#e8701e');
+    m.fillStyle = og; m.fillRect(0, 0, N, N);
+    m.globalCompositeOperation = 'destination-in'; m.drawImage(tex, 0, 0);   // (just the disc)
+    x.drawImage(mc, R - N / 2, R - N / 2);
+    return c;
+  }
+  function halloTick(dt, t) {
+    const h = hallo, N = h.next, sx = Wd / 1920, sy = Hd / 1080, gap = (lo, hi) => t + (SHOWCASE ? rnd(4, 10) : rnd(lo, hi));
+    // a few bats flitting across the sky, darting up and down, in the evening and at night
+    if (h.bats) {
+      const B = h.bats;
+      for (const b of B.list) { b.x += B.vx * dt; b.ph += b.fq * dt; }
+      if (B.list.every(b => B.vx > 0 ? b.x > Wd + 60 : b.x < -60)) { h.bats = null; N.bats = gap(25, 70); }
+    } else if ((h.dusk || /[?&]bats\b/.test(location.search)) && flyOK() && t > N.bats) {
+      const dir = Math.random() < .5 ? 1 : -1, y0 = Hd * rnd(.12, .32), k = sy * 1.3;
+      h.bats = { k, vx: dir * 115 * Math.max(.6, Math.min(sx, 1.2)), list: Array.from({ length: 3 + Math.floor(Math.random() * 4) }, () =>
+        ({ x: (dir > 0 ? -40 : Wd + 40) - dir * rnd(0, 240) * k, y: y0 + rnd(-60, 60) * k, ph: rnd(0, 6.3), fq: rnd(16, 20), wa: rnd(18, 36) * k, wf: rnd(2.5, 4.5), wp: rnd(0, 6.3) })) };
+    }
+    // the witch on her broom, across the sky (through the moon at night); now and then he says something about her
+    if (h.witch) {
+      const w = h.witch; w.t += dt;
+      if (w.react && !w.said && w.t > w.dur * .6) { w.said = true; talk.react = 'witch'; }
+      if (w.t > w.dur) { h.witch = null; N.witch = gap(90, 200); }
+    } else if (flyOK() && !stage.ev && t > N.witch) {
+      const dir = Math.random() < .5 ? 1 : -1, v = 175 * Math.max(.6, Math.min(sx, 1.3)), moon = orb && h.night;
+      h.witch = { t: 0, dur: (Wd + 340 * sx) / v, dir, v, slope: rnd(-.08, .08), react: Math.random() < .6,
+        mx: moon ? orb.x : Wd * rnd(.25, .45), my: moon ? orb.y + rnd(-.012, .012) * Hd : Hd * rnd(.1, .28) };
+    }
+    if (sea) {   // the ghost ship, drifting slowly along the horizon
+      const s = h.ship, wide = Wd > Hd;
+      if (s) {
+        s.t += dt;
+        if (s.react && !s.said && s.t > s.dur * .4) { s.said = true; talk.react = 'ghostship'; }
+        if (s.t > s.dur) { h.ship = null; N.ship = gap(120, 240); }
+      } else if (t > N.ship && !/hurricane|tornado/.test(mode.kind)) {
+        const a = Wd * (wide ? .03 : .06), b = Wd * (wide ? .27 : .55), dir = Math.random() < .5 ? 1 : -1;
+        h.ship = { t: 0, dur: 45, dir, x0: dir > 0 ? a : b, x1: dir > 0 ? b : a, react: Math.random() < .6 };
+      }
+    }
+    if (forest) {   // the ghost rising from behind the trees
+      const gh = h.ghost;
+      if (gh) {
+        gh.t += dt;
+        if (gh.react && !gh.said && gh.t > 4) { gh.said = true; talk.react = 'ghost'; }
+        if (gh.t > gh.dur) { h.ghost = null; N.ghost = gap(100, 220); }
+      } else if (t > N.ghost && mode.kind !== 'tornado' && !stage.ev) h.ghost = { t: 0, dur: 11, x: Wd * (Wd > Hd ? rnd(.27, .42) : rnd(.15, .85)), react: Math.random() < .6 };
+    }
+  }
+  // A bat seen from below: pointed ears, wings spread both ways with a scalloped edge; w is the wingbeat (1 up, -1 down).
+  function batPath(w) {
+    const p = new Path2D();
+    p.ellipse(0, .5, 2.4, 3.6, 0, 0, 7); p.arc(0, -3, 2.2, 0, 7);
+    for (const sg of [-1, 1]) {
+      p.moveTo(sg * .4, -4.5); p.lineTo(sg * 1.4, -7.5); p.lineTo(sg * 2, -4); p.closePath();   // ear
+      p.moveTo(sg * 1.5, -1.5); p.lineTo(sg * 6, -5 - 3 * w); p.lineTo(sg * 14, -3 - 6 * w);   // wing, up to the wrist and out to the tip
+      p.quadraticCurveTo(sg * 12, -2 * w, sg * 10.5, 2 - 2 * w); p.quadraticCurveTo(sg * 9, -w, sg * 7, 2.5 - w);
+      p.quadraticCurveTo(sg * 5, .5, sg * 2, 2.5); p.closePath();
+    }
+    return p;
+  }
+  function drawHalloSky(ts) {
+    const t = ts / 1000, h = hallo;
+    if (h.bats) {
+      const B = h.bats;
+      for (const b of B.list) {
+        g.save(); g.translate(b.x, b.y + Math.sin(t * b.wf + b.wp) * b.wa); g.scale(B.k, B.k); g.rotate(Math.sin(t * b.wf * 1.3 + b.wp) * .25);
+        const p = batPath(Math.sin(b.ph));
+        g.strokeStyle = h.night ? 'rgba(255,170,100,.35)' : 'rgba(255,190,140,.3)'; g.lineWidth = 1.6; g.stroke(p);   // a faint orange edge from the moon
+        g.fillStyle = '#0b0a0e'; g.fill(p);
+        g.restore();
+      }
+    }
+    if (h.witch) drawWitch(t);
+  }
+  // The witch on her broom, facing the way she flies: pointed hat, cape and hair streaming back, her black cat riding on
+  // the end of the broom. A silhouette in the evening and at night; by day you can see her green face and purple cape.
+  function drawWitch(t) {
+    const w = hallo.witch, sx = Wd / 1920, k = Math.max(.6, Math.min(Hd / 1080, Wd / 900)) * 1.2;
+    const x = (w.dir > 0 ? -170 * sx : Wd + 170 * sx) + w.dir * w.v * w.t, y = w.my + (x - w.mx) * w.slope + Math.sin(t * 2.2) * 6 * k;
+    const dark = hallo.dusk, sil = '#09080d';
+    const P = dark ? { dress: sil, cape: sil, skin: sil, hat: sil, band: sil, hair: sil, stick: sil, straw: sil, cat: sil, boot: sil }
+      : { dress: '#2a1d3a', cape: '#4a2266', skin: '#8fc26a', hat: '#1f1828', band: '#e8771e', hair: '#1a1a1a', stick: '#7a5a32', straw: '#c9a050', cat: '#121214', boot: '#121214' };
+    const fl = Math.sin(t * 9), fl2 = Math.sin(t * 9 + 1.3);   // the cape and hair flapping
+    g.save(); g.translate(x, y); g.scale(w.dir * k, k); g.rotate(-.05 + Math.sin(t * 2.2 + 1) * .04); g.lineCap = g.lineJoin = 'round';
+    if (dark) { g.shadowColor = hallo.night ? 'rgba(255,160,80,.55)' : 'rgba(255,190,140,.4)'; g.shadowBlur = 5 * k; }   // a faint glowing edge
+    g.fillStyle = P.straw; g.beginPath(); g.moveTo(-34, -2); g.lineTo(-58, -9); g.quadraticCurveTo(-63, 2, -58, 12); g.lineTo(-34, 5); g.closePath(); g.fill();   // bristles
+    g.strokeStyle = P.stick; g.lineWidth = 2.6; g.beginPath(); g.moveTo(-36, 1.5); g.lineTo(40, -2); g.stroke();   // handle
+    if (!dark) { g.strokeStyle = '#8a3a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(-35, -2.5); g.lineTo(-35, 5.5); g.stroke(); }   // the binding
+    // her cat on the back of the broom, tail curled up
+    g.fillStyle = P.cat; g.beginPath(); g.ellipse(-24, -5, 6.5, 4, 0, 0, 7); g.fill();
+    g.beginPath(); g.arc(-18, -10, 3.6, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(-20.5, -12.5); g.lineTo(-20, -17); g.lineTo(-17.5, -13.5); g.moveTo(-17, -13.5); g.lineTo(-15, -17); g.lineTo(-14.6, -11.8); g.fill();
+    g.strokeStyle = P.cat; g.lineWidth = 2; g.beginPath(); g.moveTo(-30, -6); g.quadraticCurveTo(-38, -8, -36, -15 + fl * 1.5); g.quadraticCurveTo(-34, -19, -31, -17); g.stroke();
+    if (!dark) { g.fillStyle = '#f2d34a'; g.beginPath(); g.arc(-16.6, -10.5, .8, 0, 7); g.fill(); }
+    // her cape streaming back
+    g.fillStyle = P.cape; g.beginPath(); g.moveTo(1, -24); g.quadraticCurveTo(-12, -25 + fl, -24, -20 + fl * 2); g.lineTo(-31, -13 + fl2 * 3); g.lineTo(-24, -12 + fl * 2);
+    g.quadraticCurveTo(-14, -11, -6, -7); g.closePath(); g.fill();
+    // her dress, sitting side-saddle on the broom, and her leg and pointed boot
+    g.fillStyle = P.dress; g.beginPath(); g.moveTo(9, -1); g.lineTo(-11, 2); g.quadraticCurveTo(-6, -14, -1, -24); g.lineTo(6, -24); g.quadraticCurveTo(10, -12, 9, -1); g.fill();
+    g.strokeStyle = P.dress; g.lineWidth = 3.2; g.beginPath(); g.moveTo(4, 0); g.lineTo(10, 9); g.stroke();
+    g.fillStyle = P.boot; g.beginPath(); g.moveTo(8, 8); g.lineTo(17, 8.5); g.quadraticCurveTo(19, 7, 18, 5.5); g.lineTo(11, 10.5); g.closePath(); g.fill();
+    // arms forward to the handle
+    g.strokeStyle = P.dress; g.lineWidth = 3; g.beginPath(); g.moveTo(3, -20); g.quadraticCurveTo(10, -14, 15, -2); g.stroke();
+    g.fillStyle = P.skin; g.beginPath(); g.arc(15, -2, 1.9, 0, 7); g.fill();
+    // her hair, head and long pointed nose
+    g.fillStyle = P.hair; g.beginPath(); g.moveTo(2, -31); g.quadraticCurveTo(-8, -31 + fl2, -18, -25 + fl2 * 2); g.quadraticCurveTo(-8, -25, 0, -24); g.closePath(); g.fill();
+    g.fillStyle = P.skin; g.beginPath(); g.arc(4.5, -28, 4.6, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(8, -30); g.lineTo(14, -26.5); g.lineTo(8.4, -26.4); g.closePath(); g.fill();
+    if (!dark) { g.fillStyle = '#1b1b1b'; g.beginPath(); g.arc(6.8, -29.5, .8, 0, 7); g.fill(); }
+    // her hat, its tip bent back
+    g.fillStyle = P.hat; g.beginPath(); g.ellipse(3, -32.5, 10.5, 2, -.08, 0, 7); g.fill();
+    g.beginPath(); g.moveTo(-3, -33); g.lineTo(9, -34); g.lineTo(1, -47); g.quadraticCurveTo(-5, -51, -12, -49 + fl * .8); g.quadraticCurveTo(-5, -47, -3, -43); g.closePath(); g.fill();
+    g.shadowBlur = 0;
+    if (!dark) { g.fillStyle = P.band; g.beginPath(); g.moveTo(-2.6, -34.5); g.lineTo(8.2, -35.4); g.lineTo(7, -37.4); g.lineTo(-2.4, -36.6); g.closePath(); g.fill(); }
+    g.restore();
+  }
+  // A jack-o'-lantern sitting at (x, y) (its bottom), r across from the middle: a ribbed orange pumpkin with a stem and
+  // a carved face that glows and flickers when its candle is lit. dim darkens it for night or a dark sky.
+  function drawPumpkin(c, x, y, r, lit, dim, t) {
+    const col = h => `rgb(${mix(hexRgb(h), [16, 14, 30], dim)})`;
+    c.save(); c.translate(x, y - r * .8);
+    if (lit && dim > .1) {   // its glow on the ground round it
+      const gl = c.createRadialGradient(0, r * .3, 0, 0, r * .3, r * 3);
+      gl.addColorStop(0, `rgba(255,150,50,${.3 * dim + .1})`); gl.addColorStop(1, 'rgba(255,150,50,0)');
+      c.fillStyle = gl; c.fillRect(-r * 3, -r * 2.7, r * 6, r * 6);
+    }
+    for (const [ox, sh] of [[-.42, '#b8540f'], [.42, '#b8540f'], [-.18, '#d86a18'], [.18, '#d86a18'], [0, '#ec8526']]) {
+      c.fillStyle = col(sh); c.beginPath(); c.ellipse(ox * r, 0, (ox ? .55 : .42) * r, r * .8, 0, 0, 7); c.fill();
+    }
+    c.fillStyle = col('#4f6326'); c.beginPath(); c.moveTo(-r * .09, -r * .7); c.quadraticCurveTo(-r * .06, -r * 1.05, r * .14, -r * 1.1);
+    c.lineTo(r * .13, -r * .96); c.quadraticCurveTo(r * .06, -r * .9, r * .09, -r * .7); c.closePath(); c.fill();   // stem
+    // the carved face: triangle eyes and nose, and a toothy grin
+    const face = new Path2D();
+    for (const s of [-1, 1]) { face.moveTo(s * r * .44, -r * .1); face.lineTo(s * r * .14, -r * .1); face.lineTo(s * r * .3, -r * .4); face.closePath(); }
+    face.moveTo(-r * .08, r * .06); face.lineTo(r * .08, r * .06); face.lineTo(0, -r * .1); face.closePath();
+    face.moveTo(-r * .56, r * .16); face.quadraticCurveTo(0, r * .7, r * .56, r * .16);
+    for (const [px, py] of [[.32, .24], [.22, .38], [.12, .27], [-.12, .27], [-.22, .38], [-.32, .24]]) face.lineTo(px * r, py * r);
+    face.closePath();
+    if (lit) {
+      const fk = .8 + .2 * Math.sin(t * 11 + x) * Math.sin(t * 7.3 + y);
+      c.shadowColor = 'rgba(255,140,30,.9)'; c.shadowBlur = r * .6 * fk; c.fillStyle = `rgb(255,${Math.round(190 + 30 * fk)},${Math.round(70 + 40 * fk)})`;
+    } else c.fillStyle = col('#3a1d08');
+    c.fill(face);
+    c.restore();
+  }
+  function drawHalloGround(ts) {   // the Sky style's jack-o'-lanterns along the bottom (unlit in the rain)
+    const t = ts / 1000, h = hallo, lit = !sc.rain;
+    for (const [u, sz] of h.lanterns) drawPumpkin(g, u * Wd, Hd - 6 * h.k, 24 * h.k * sz, lit, h.dim, t);
+  }
+  // The Ocean's ghost ship: a pale, see-through galleon with tattered sails, glowing faintly green, fading in and out
+  // as it drifts along the horizon. Drawn just after the lighthouse, so every wave passes in front of it.
+  function drawGhostShip(t) {
+    const sh = hallo.ship, u = sh.t / sh.dur, k = sea.lhK * .85, x = lrp(sh.x0, sh.x1, u), y = sea.top + 4 * k + Math.sin(t * .8) * 1.2 * k;
+    const a = Math.max(0, Math.min(1, u / .15, (1 - u) / .15)) * (mode.kind === 'fog' ? .75 : .55) * (.85 + .15 * Math.sin(t * 3.1) * Math.sin(t * 1.7));
+    if (a <= 0) return;
+    g.save(); g.translate(x, y);
+    const gl = g.createRadialGradient(0, -40 * k, 0, 0, -40 * k, 90 * k);
+    gl.addColorStop(0, `rgba(140,255,190,${.18 * a})`); gl.addColorStop(1, 'rgba(140,255,190,0)');
+    g.fillStyle = gl; g.fillRect(-90 * k, -130 * k, 180 * k, 180 * k);
+    g.globalAlpha = a; g.scale(k * sh.dir, k); g.lineCap = g.lineJoin = 'round';
+    const hull = '#3c4c48';
+    g.fillStyle = hull; g.beginPath(); g.moveTo(-56, -22); g.lineTo(-40, -14); g.lineTo(42, -14); g.lineTo(58, -24); g.lineTo(40, 0); g.lineTo(-44, 0); g.closePath(); g.fill();
+    g.fillRect(-58, -30, 22, 16);   // the stern castle
+    g.strokeStyle = hull; g.lineWidth = 2; g.beginPath(); g.moveTo(42, -16); g.lineTo(70, -30); g.stroke();   // bowsprit
+    g.lineWidth = 2.2; for (const [mx, top] of [[-28, -66], [4, -82], [32, -66]]) { g.beginPath(); g.moveTo(mx, -14); g.lineTo(mx, top); g.stroke(); }
+    // the tattered sails, billowing a little, with ragged bottoms
+    g.fillStyle = 'rgba(205,235,220,.85)';
+    for (const [mx, top, w, hh] of [[-28, -62, 14, 34], [4, -78, 18, 46], [32, -62, 13, 32]]) {
+      const b = Math.sin(t * 1.3 + mx) * 2;
+      g.beginPath(); g.moveTo(mx - w, top); g.lineTo(mx + w, top); g.quadraticCurveTo(mx + w + 3 + b, top + hh * .5, mx + w, top + hh);
+      for (let i = 1; i <= 6; i++) g.lineTo(mx + w - w * 2 * i / 6, top + hh - (i % 2 ? hh * .22 : hh * (i === 4 ? .4 : .05)));
+      g.quadraticCurveTo(mx - w + 3 + b, top + hh * .5, mx - w, top); g.fill();
+    }
+    g.fillStyle = hull; g.beginPath(); g.moveTo(4, -82); g.lineTo(20, -84 + Math.sin(t * 5) * 1.5); g.lineTo(17, -79); g.lineTo(22, -76 + Math.sin(t * 5 + 1) * 1.5); g.lineTo(4, -76); g.fill();   // a tattered flag
+    g.fillStyle = 'rgba(160,255,200,.9)'; for (const px of [-30, -14, 2, 18]) { g.beginPath(); g.arc(px, -7, 1.8, 0, 7); g.fill(); }   // glowing portholes
+    g.restore();
+  }
+  // The Forest's ghost: a sheet ghost that rises up from behind the middle row of trees, looks one way and the other,
+  // waves its arms, and sinks back down. Drawn behind those trees, so they hide its lower half.
+  function drawGhost(f, t) {
+    const gh = hallo.ghost, u = gh.t / gh.dur, sy = Hd / 1080, k = f.s * 1.3;
+    const up = u < .2 ? ease(u / .2) : u > .8 ? 1 - ease((u - .8) / .2) : 1;
+    const x = gh.x + Math.sin(t * 1.3) * 6 * k, y = lrp(f.top + 60 * sy, f.top - 185 * sy, up) + Math.sin(t * 2.4) * 4 * k;
+    const look = u < .3 ? 0 : u < .45 ? -1 : u < .6 ? 1 : 0, wave = u > .62 && u < .8 ? Math.sin(t * 10) : 0;
+    g.save(); g.translate(x, y); g.scale(k, k); g.globalAlpha = .92;
+    if (f.night) { const gl = g.createRadialGradient(0, 0, 0, 0, 0, 60); gl.addColorStop(0, 'rgba(220,235,255,.25)'); gl.addColorStop(1, 'rgba(220,235,255,0)'); g.fillStyle = gl; g.fillRect(-60, -60, 120, 120); }
+    const sheet = f.night ? '#dfe6f2' : '#f6f7fb';
+    g.fillStyle = sheet; g.beginPath(); g.moveTo(-20, 40); g.lineTo(-20, -8); g.arc(0, -8, 20, Math.PI, 0); g.lineTo(20, 40);
+    for (let i = 1; i <= 4; i++) g.quadraticCurveTo(20 - 10 * i + 5, 40 + (i % 2 ? 8 : -4) + Math.sin(t * 6 + i) * 3, 20 - 10 * i, 40);
+    g.fill();
+    for (const s of [-1, 1]) {   // little arms, waving
+      g.beginPath(); g.moveTo(s * 18, 0); g.quadraticCurveTo(s * 32, -4 - (s > 0 ? wave * 10 : 0), s * 34, -14 - (s > 0 ? wave * 8 : 0)); g.quadraticCurveTo(s * 26, 2, s * 18, 10); g.fill();
+    }
+    g.fillStyle = '#1b1b24';
+    for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 7 + look * 5, -10, 3.4, 5, 0, 0, 7); g.fill(); }
+    g.beginPath(); g.ellipse(look * 4, 4, 3.6, 4.6, 0, 0, 7); g.fill();   // "Ooo"
+    g.restore();
+  }
+  // A cobweb in a corner at (x, y), spanning the angles a0 to a1, with a little spider hanging from it.
+  function cobweb(c, x, y, R, a0, a1, t, night) {
+    c.save(); c.translate(x, y);
+    c.strokeStyle = night ? 'rgba(220,225,240,.55)' : 'rgba(255,255,255,.8)'; c.lineWidth = .6;
+    const n = 5, ang = i => a0 + (a1 - a0) * i / (n - 1);
+    c.beginPath();
+    for (let i = 0; i < n; i++) { c.moveTo(0, 0); c.lineTo(Math.cos(ang(i)) * R, Math.sin(ang(i)) * R); }
+    for (const rr of [.3, .55, .8]) for (let i = 0; i < n - 1; i++) {
+      const p0 = [Math.cos(ang(i)) * R * rr, Math.sin(ang(i)) * R * rr], p1 = [Math.cos(ang(i + 1)) * R * rr, Math.sin(ang(i + 1)) * R * rr];
+      c.moveTo(...p0); c.quadraticCurveTo((p0[0] + p1[0]) * .42, (p0[1] + p1[1]) * .42, ...p1);   // (sagging in toward the corner)
+    }
+    c.stroke();
+    const am = (a0 + a1) / 2, sx = Math.cos(am) * R * .55, sy = Math.sin(am) * R * .55, drop = 10 + Math.sin(t * .9) * 4;
+    c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx, sy + drop); c.stroke();
+    c.fillStyle = '#141414'; c.beginPath(); c.arc(sx, sy + drop + 2, 2.2, 0, 7); c.fill();
+    c.strokeStyle = '#141414'; c.lineWidth = .6; c.beginPath();
+    for (const s of [-1, 1]) for (const dy of [-.5, 1, 2.5]) { c.moveTo(sx, sy + drop + 2 + dy * .6); c.lineTo(sx + s * 4, sy + drop + 1 + dy); }
+    c.stroke();
+    c.restore();
+  }
+  // the fisherman's witch hat (on top of his hood in the rain), drawn on his head at (x, y)
+  function witchHat(c, x, y, s) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    c.fillStyle = '#2b2138'; c.beginPath(); c.ellipse(0, 0, 12, 2.6, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-6.5, 0); c.lineTo(-1.5, -13); c.quadraticCurveTo(-4, -17, -9, -17); c.quadraticCurveTo(-2, -19, 1.5, -14); c.lineTo(6.5, 0); c.closePath(); c.fill();
+    c.fillStyle = '#e8771e'; c.beginPath(); c.moveTo(-5.9, -1.5); c.lineTo(5.9, -1.5); c.lineTo(5.2, -3.6); c.lineTo(-5.1, -3.6); c.closePath(); c.fill();
+    c.restore();
   }
 
   /* ---------- Random events ---------- */
@@ -3706,6 +3972,8 @@ const Sky = (() => {
     if (sea) sea.lhImg = lighthouseSprite();
     forest = buildForest();
     tropic = buildTropic();
+    hallo = buildHalloween();
+    if (hallo && night && orb) orb = { img: harvestMoonSprite(), x: Wd * .42, y: Hd * .18 };   // Halloween's big orange moon
     tornado = buildTornado();
   }
 
@@ -3794,6 +4062,7 @@ const Sky = (() => {
     if (sea) { diverTick(dt); yachtTick(dt); }
     if (forest) forestTick(dt, t);
     if (tropic) tropicTick(dt, t);
+    if (hallo) halloTick(dt, t);
     updateGlass(dt, t);
     for (const c of clouds) {
       c.x += c.v * gust * dt;
@@ -3859,6 +4128,7 @@ const Sky = (() => {
     drawMinors(ts);   // far-off helicopters and the passenger jet
     if (flock.length) { g.globalAlpha = 1; drawBirds(); }
     if (plane) { g.globalAlpha = 1; drawPlane(ts); }
+    if (hallo) { g.globalAlpha = 1; drawHalloSky(ts); }   // Halloween's bats and witch
     if (stage.ev) { g.globalAlpha = 1; drawMajorSky(ts); }   // the giant and the eagle
     g.globalAlpha = 1;
     if (swirl) {
@@ -3874,6 +4144,7 @@ const Sky = (() => {
     if (sea) { g.globalAlpha = 1; drawSea(ts); }   // Ocean display style: below the sky, under the rain, snow and fog
     if (forest) { g.globalAlpha = 1; drawForest(ts); }   // Forest display style, likewise
     if (tropic) { g.globalAlpha = 1; drawTropic(ts); }   // and Tropical
+    if (hallo && hallo.lanterns.length) { g.globalAlpha = 1; drawHalloGround(ts); }   // the Sky style's jack-o'-lanterns
     for (const f of flares) { g.fillStyle = f.gr; g.beginPath(); g.arc(f.x, f.y, f.r, 0, 7); g.fill(); }
     if (windLines.length) {   // faint streaks of wind
       g.strokeStyle = 'rgb(255,255,255)'; g.lineWidth = Math.max(1, 1.4 * Hd / 1080); g.lineCap = 'round';
@@ -3955,7 +4226,7 @@ const Sky = (() => {
 
   function set(kind, tod) {
     setBg(kind, tod);
-    const s = [kind, tod, Wd, Hd, S.motion, S.display].join('|');
+    const s = [kind, tod, Wd, Hd, S.motion, S.display, holidayNow()].join('|');
     if (s === sig) return;
     sig = s; mode = { kind, tod }; sc = SCENES[kind] || SCENES.clear;
     build(); start();

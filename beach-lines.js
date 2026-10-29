@@ -225,4 +225,21 @@ window.TW_BEACH_LINES = {
     "Ten out of ten.",
     "Who needs a fridge?",
   ],
+
+  // ---------- Halloween (when the Halloween holiday theme is on) ----------
+  halloween: [
+    "Happy Halloween!",
+    "Trick or treat!",
+    "My costume? Tourist.",
+    "Coconuts make great jack-o'-lanterns.",
+    "Save me some candy, {town}!",
+    "Spooky night on the island.",
+    "Watch out for little ghosts on the roads tonight!",
+  ],
+  witch: [
+    "Was that… a witch?!",
+    "Nice broom!",
+    "Happy Halloween to you too!",
+    "Fly safe up there!",
+  ],
 };
