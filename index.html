@@ -2752,8 +2752,8 @@ const Sky = (() => {
     const tc = h => `rgb(${tint ? mix(hexRgb(h), tint[0], tint[1]) : hexRgb(h)})`;
     const C = {};
     for (const [k, h] of Object.entries({ trunk: '#a07c55', ring: '#7c5a3a', frond: '#3f9a4a', frondDark: '#2b7438', coconut: '#5a3e22',
-      fabric: '#e5553f', fabric2: '#f4d06a', rope: '#cdb88c', skin: '#e3a77c', hair: '#3a2716', shirt: '#2fa6c9', flower: '#ffd84a',
-      shorts: '#f08a3a', glasses: '#141414', wall: '#c99d64', bamboo: '#a37a46', roof: '#d8b468', roofDark: '#a8823e', door: '#3a2614',
+      fabric: '#2c4a7a', fabric2: '#f3ead6', rope: '#cdb88c', skin: '#e3a77c', hair: '#3a2716', shirt: '#e2473b', flower: '#fff4d6', flower2: '#ffd84a', outline: '#3a2418',
+      shorts: '#1fa59a', glasses: '#141414', wall: '#c99d64', bamboo: '#a37a46', roof: '#d8b468', roofDark: '#a8823e', door: '#3a2614',
       coco: '#7a5230', cocoIn: '#f4efe4', straw: '#e84a6a', parasol: '#f25a9a', torch: '#6a4a2a', snow: '#f4f7fa' })) C[k] = tc(h);
     const s = Math.min(Hd / 1080, Wd / 700) * (portrait ? 1 : 1.25), ax = Wd * (portrait ? .62 : .345);
     const b = { top: Hd * (portrait ? .55 : .575), shore: Hd * (portrait ? .65 : .655), gy: Hd * (portrait ? .75 : .73), night, golden, kind, C, s, ax,
@@ -2761,6 +2761,9 @@ const Sky = (() => {
       pa: ax - 105 * s, pb: ax + 105 * s, hx: ax - 238 * s,   // the two palms, and the hut
       wind: sc.swirl ? .09 : sc.tornado ? .08 : sc.wind ? .05 : sc.storm ? .03 : 0,
       sip: { st: 'rest', t: 0, dur: rnd(6, 12) } };
+    // more palms at the sides of the screen, nearer to us: [across, below the beach line, height, lean, size, sway phase]
+    b.sidePalms = portrait ? [[.05, 60, 300, 40, 1.2, 2.1], [.97, 80, 300, -40, 1.25, 6]]
+      : [[.035, 60, 330, 40, 1.35, 2.1], [.12, 92, 270, -30, 1.2, 3.4], [.53, 40, 300, -35, 1.2, 4.2], [.8, 70, 340, 30, 1.35, 5], [.97, 100, 300, -40, 1.3, 6]];
     b.bg = tropicBackdrop(b);
     return b;
   }
@@ -2826,11 +2829,13 @@ const Sky = (() => {
     drawHut(b, t);
     drawHammock(b, t);
     if (b.night || b.golden) drawTorches(b, t);
+    // a few more palms at the sides, nearer to us
+    for (const [u, dy, h, lean, sz, ph] of b.sidePalms) palm(b, t, u * Wd, b.gy + dy * s, h * s, lean * s, ph, sz);
   }
   // a palm from its base (x, y): a curving ringed trunk leaning by dx, with drooping fronds that sway in the breeze
   // and stream out in the wind; returns the trunk's point at a height
-  function palm(b, t, x, y, h, dx, ph) {
-    const C = b.C, s = b.s, lean = forestLean(b, t, ph) * 260 * s, top = [x + dx + lean, y - h];
+  function palm(b, t, x, y, h, dx, ph, sz = 1) {
+    const C = b.C, s = b.s * sz, lean = forestLean(b, t, ph) * 260 * s, top = [x + dx + lean, y - h];
     const at = u => [lrp(x, top[0], u * u * .7 + u * .3), lrp(y, top[1], u)];
     g.save(); g.lineCap = 'round';
     for (let i = 0; i < 18; i++) {   // the trunk, in short segments that taper, with darker rings between them
@@ -2883,11 +2888,11 @@ const Sky = (() => {
   function drawLounger(b, t, P) {
     const C = b.C, s = b.s, [hx, hy] = P(.2), [cx, cy] = P(.42), [kx, ky] = P(.7), [fx, fy] = P(.86);
     g.save(); g.lineCap = g.lineJoin = 'round';
-    g.strokeStyle = C.skin; g.lineWidth = 6 * s; g.beginPath(); g.moveTo(kx, ky - 12 * s); g.lineTo(fx + 4 * s, fy - 16 * s); g.stroke();   // legs
+    for (const [col, w] of [[C.outline, 8], [C.skin, 6]]) { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(kx, ky - 12 * s); g.lineTo(fx + 4 * s, fy - 16 * s); g.stroke(); }   // legs (outlined)
     g.fillStyle = C.skin; g.beginPath(); g.ellipse(fx + 8 * s, fy - 19 * s, 3.5 * s, 5 * s, -.3, 0, 7); g.fill();                         // feet
-    g.fillStyle = C.shorts; g.beginPath(); g.ellipse(lrp(cx, kx, .6), lrp(cy, ky, .6) - 10 * s, 15 * s, 8 * s, .1, 0, 7); g.fill();
-    g.fillStyle = C.shirt; g.beginPath(); g.ellipse(lrp(hx, kx, .38), lrp(hy, ky, .38) - 11 * s, 26 * s, 10 * s, .08, 0, 7); g.fill();
-    g.fillStyle = C.flower; for (const [u, o] of [[.25, -4], [.4, 2], [.5, -6], [.33, 4]]) { const px = lrp(hx, kx, u), py = lrp(hy, ky, u) - 11 * s + o * s; g.beginPath(); g.arc(px, py, 1.8 * s, 0, 7); g.fill(); }
+    g.fillStyle = C.shorts; g.beginPath(); g.ellipse(lrp(cx, kx, .6), lrp(cy, ky, .6) - 10 * s, 15 * s, 8 * s, .1, 0, 7); g.fill(); g.strokeStyle = C.outline; g.lineWidth = 1.3 * s; g.stroke();
+    g.fillStyle = C.shirt; g.beginPath(); g.ellipse(lrp(hx, kx, .38), lrp(hy, ky, .38) - 11 * s, 26 * s, 10 * s, .08, 0, 7); g.fill(); g.stroke();   // (a thin dark outline so he stands out from the hammock)
+    [[.22, -4], [.3, 3], [.4, -1], [.48, -6], [.52, 3], [.34, -7]].forEach(([u, o], i) => { const px = lrp(hx, kx, u), py = lrp(hy, ky, u) - 11 * s + o * s; g.fillStyle = i % 2 ? C.flower2 : C.flower; g.beginPath(); g.arc(px, py, 2 * s, 0, 7); g.fill(); });   // hibiscus print
     // his drink: resting on his belly, or lifted to his mouth
     const p = b.sip, up = p.st === 'sip' ? (p.t < .7 ? ease(p.t / .7) : p.t < 1.9 ? 1 : 1 - ease((p.t - 1.9) / .7)) : 0;
     const rest = [lrp(hx, kx, .42), lrp(hy, ky, .42) - 22 * s], mouth = [hx + 12 * s, hy - 24 * s], dk = [lrp(rest[0], mouth[0], up), lrp(rest[1], mouth[1], up)];
@@ -2903,7 +2908,7 @@ const Sky = (() => {
   function drawBeachHead(b, t, look, k) {   // tanned, messy dark hair, sunglasses, a big grin
     const C = b.C; g.save(); g.scale(k, k);
     g.fillStyle = C.hair; g.beginPath(); g.arc(0, -1, 9.8, Math.PI * .9, Math.PI * 2.1); g.fill();
-    g.fillStyle = C.skin; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
+    g.fillStyle = C.skin; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill(); g.strokeStyle = C.outline; g.lineWidth = 1; g.globalAlpha = .6; g.stroke(); g.globalAlpha = 1;
     g.fillStyle = C.hair; for (const a of [-2.6, -2, -1.4, -.8]) { g.beginPath(); g.ellipse(Math.cos(a) * 8, Math.sin(a) * 8 - 1, 3.4, 2.4, a, 0, 7); g.fill(); }   // tousled hair
     const ex = look * 3.5;
     g.fillStyle = C.glasses; g.beginPath(); g.roundRect(ex - 6.5, -3, 5.8, 3.6, 1.4); g.roundRect(ex + .7, -3, 5.8, 3.6, 1.4); g.fill(); g.fillRect(ex - 1, -2.2, 2, 1);   // sunglasses
