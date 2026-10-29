@@ -108,6 +108,7 @@ Built the display, the animated backgrounds, alerts (NWS, USGS, FEMA, NJ), the a
 
 - Giant switched off for a redesign (code kept). Sky (formerly "Normal") is the default again and keeps only the biplane every 5 minutes, seagulls and shooting stars; Ocean keeps every random event.
 - Display style menu: Sky (default), Ocean, Forest, Tropical / City / Waterfall / Village (disabled, "coming soon"), Smart mirror.
+- Holiday theme menu (`#holidaySel`, saved as `S.holiday`, default `off`, also a `?holiday=` URL parameter): None, then Automatic and eight holidays, all disabled ("coming soon"). The plan: decorations drawn on top of the current display style, not a separate style.
 - Eight ambient sounds from the user's files (see Sounds below). A variable-name clash (`n`) in the new loop-trim code stopped every sound playing until fixed; the player was then tested end to end in a real browser (served over http, reporting back to the local test server).
 - The fisherman's bubble now uses Nessie's speech-bubble style; Nessie says "I need about tree fiddy".
 - GitHub Actions moved to their Node 24 versions, trialled on the test site first.

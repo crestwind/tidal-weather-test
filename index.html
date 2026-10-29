@@ -452,6 +452,9 @@
     <label>Display style
       <select id="displaySel"><option value="normal">Sky (default)</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="tropical" disabled>Tropical (coming soon)</option><option value="city" disabled>City (coming soon)</option><option value="waterfall" disabled>Waterfall (coming soon)</option><option value="village" disabled>Village (coming soon)</option><option value="mirror">Smart mirror (black background, no animation)</option></select>
     </label>
+    <label>Holiday theme
+      <select id="holidaySel"><option value="off">None</option><option value="auto" disabled>Automatic: each holiday in season (coming soon)</option><option value="newyear" disabled>New Year's (coming soon)</option><option value="valentine" disabled>Valentine's Day (coming soon)</option><option value="stpatrick" disabled>St. Patrick's Day (coming soon)</option><option value="easter" disabled>Easter (coming soon)</option><option value="july4" disabled>Fourth of July (coming soon)</option><option value="halloween" disabled>Halloween (coming soon)</option><option value="thanksgiving" disabled>Thanksgiving (coming soon)</option><option value="christmas" disabled>Christmas (coming soon)</option></select>
+    </label>
     <div class="row">
       <label>Background scene
         <select id="sceneSel">
@@ -520,7 +523,7 @@ const $ = s => document.querySelector(s);
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 /* ======================= settings ======================= */
-const DEFAULTS = { name: '', lat: null, lon: null, units: 'imperial', clock: '12', tideStation: '', motion: 'full', scene: 'auto', tod: 'auto', alertPreview: '', soePreview: '', display: 'normal' };   // the Normal (sky) style is the default for new visitors
+const DEFAULTS = { name: '', lat: null, lon: null, units: 'imperial', clock: '12', tideStation: '', motion: 'full', scene: 'auto', tod: 'auto', alertPreview: '', soePreview: '', display: 'normal', holiday: 'off' };   // the Normal (sky) style is the default for new visitors
 let S = loadSettings();
 function loadSettings() {
   let s = { ...DEFAULTS };
@@ -528,7 +531,7 @@ function loadSettings() {
   // URL parameters win, e.g. index.html?lat=38.93&lon=-74.91&name=Cape%20May
   const q = new URLSearchParams(location.search);
   if (q.has('lat') && q.has('lon')) { s.lat = +q.get('lat'); s.lon = +q.get('lon'); s.name = q.get('name') || s.name || `${s.lat}, ${s.lon}`; }
-  for (const k of ['units', 'scene', 'tod', 'motion', 'display']) if (q.has(k)) s[k] = q.get(k);
+  for (const k of ['units', 'scene', 'tod', 'motion', 'display', 'holiday']) if (q.has(k)) s[k] = q.get(k);
   // older settings and links used mirror=on for smart mirror mode
   if (s.mirror === 'on' || q.get('mirror') === 'on') s.display = 'mirror';
   delete s.mirror;
@@ -4210,7 +4213,7 @@ function openSettings(msg) {
   pick = null;
   $('#locInput').value = S.name;
   $('#unitsSel').value = S.units; $('#clockSel').value = S.clock; $('#stationInput').value = S.tideStation;
-  $('#motionSel').value = S.motion; $('#sceneSel').value = S.scene; $('#todSel').value = S.tod; $('#displaySel').value = S.display;
+  $('#motionSel').value = S.motion; $('#sceneSel').value = S.scene; $('#todSel').value = S.tod; $('#displaySel').value = S.display; $('#holidaySel').value = S.holiday;
   $('#alertSel').value = S.alertPreview; $('#soeSel').value = S.soePreview;
   box.innerHTML = msg ? `<div class="msg">${msg}</div>` : '';
   renderLog();
@@ -4345,7 +4348,7 @@ $('#setForm').addEventListener('submit', e => {
   if (pick) { S.name = pick.name; S.lat = pick.lat; S.lon = pick.lon; }
   if (S.lat == null) { toast('Search for a location and pick one first'); return; }
   S.units = $('#unitsSel').value; S.clock = $('#clockSel').value; S.tideStation = $('#stationInput').value.trim();
-  S.motion = $('#motionSel').value; S.scene = $('#sceneSel').value; S.tod = $('#todSel').value; S.display = $('#displaySel').value; applyMirror();
+  S.motion = $('#motionSel').value; S.scene = $('#sceneSel').value; S.tod = $('#todSel').value; S.display = $('#displaySel').value; S.holiday = $('#holidaySel').value; applyMirror();
   S.alertPreview = $('#alertSel').value; S.soePreview = $('#soeSel').value;
   saveSettings(); closeSettings();
   // Settings are now the source of truth: drop preview options from the address so a reload can't bring them back.
