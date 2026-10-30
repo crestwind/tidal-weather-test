@@ -271,6 +271,18 @@ window.TW_LINES = {
     "She didn't even wave.",
     "Fly safe up there!",
   ],
+  ghost: [
+    "Did that ghost just come out of the water?!",
+    "I am NOT fishing there.",
+    "Boo to you too!",
+    "Go haunt somebody else's boat!",
+  ],
+  pirateship: [
+    "Pirates?! Hide the Swedish Fish!",
+    "Ahoy, mateys!",
+    "Nice flag. Very subtle.",
+    "They better not be after my cooler.",
+  ],
   ghostship: [
     "Is that ship… see-through?",
     "I'm not fishing over there.",
