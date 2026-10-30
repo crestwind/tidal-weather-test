@@ -3826,8 +3826,8 @@ const Sky = (() => {
     }
     if (!kind || !MAJORS.includes(kind) || !eligible(kind)) {
       const pool = MAJORS.filter(k => k !== 'biplane' && k !== stage.lastOther && eligible(k));
-      const spooky = pool.filter(k => k === 'werewolf' || k === 'batcloud' || k === 'trickortreat' || k === 'reaper');   // (on Halloween, half the in-between events are spooky ones)
-      if (spooky.length && Math.random() < .5) pool.splice(0, pool.length, ...spooky);
+      const spooky = pool.filter(k => k === 'werewolf' || k === 'batcloud' || k === 'trickortreat' || k === 'reaper');   // (on Halloween, 4 in 5 of the in-between events are spooky ones)
+      if (spooky.length && Math.random() < .8) pool.splice(0, pool.length, ...spooky);
       // (only if nothing else can happen in this weather does the last one repeat)
       kind = pool[Math.floor(Math.random() * pool.length)] || (eligible(stage.lastOther) ? stage.lastOther : '') || (eligible('biplane') ? 'biplane' : '');
     }
