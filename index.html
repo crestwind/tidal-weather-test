@@ -2131,8 +2131,8 @@ const Sky = (() => {
       if (m) { m.t += dt; if (m.t > m.dur || !ok) { f[key] = null; N[key] = gap(lo, hi); } }
       else if (ok && t > N[key]) f[key] = Object.assign({ t: 0 }, make());
     };
-    run('deer', calm, 120, 300, () => ({ dur: 13, fawn: Math.random() < .5, buck: Math.random() < .35, x1: Wd * (wide ? rnd(.16, .19) : rnd(.15, .35)) }));
-    run('rabbit', calm, 60, 180, () => ({ dur: 99, x: -20 * sx, hp: 0, sit: 0, sat: false, px: Wd * (wide ? rnd(.06, .14) : rnd(.2, .4)), end: Wd * (wide ? .47 : 1.03) }));
+    run('deer', calm && (!f.night || !!hallo), 120, 300, () => ({ dur: 13, fawn: Math.random() < .5, buck: Math.random() < .35, x1: Wd * (wide ? rnd(.16, .19) : rnd(.15, .35)) }));
+    run('rabbit', calm && (!f.night || !!hallo), 60, 180, () => ({ dur: 99, x: -20 * sx, hp: 0, sit: 0, sat: false, px: Wd * (wide ? rnd(.06, .14) : rnd(.2, .4)), end: Wd * (wide ? .47 : 1.03) }));
     if (f.rabbit) {   // hop, hop, stop to nibble once, hop on
       const r = f.rabbit, step = 34 * f.s;
       if (r.sit > 0) r.sit -= dt;
@@ -2140,7 +2140,7 @@ const Sky = (() => {
       if (r.x > r.end) r.t = r.dur + 1;
     }
     run('squirrel', calm && !f.night, 90, 240, () => ({ dur: 10 }));
-    run('owl', calm && f.night && !hallo, 120, 240, () => ({ dur: 13 }));
+    run('owl', calm && f.night, 120, 240, () => ({ dur: 13 }));
     const month = new Date().getMonth(), warm = !W || (imp() ? W.current.temperature_2m : W.current.temperature_2m * 9 / 5 + 32) >= 58;
     // (on the test site and with ?fireflies they come any time of year, so they can be seen)
     run('flies', calm && (f.night || f.golden) && (f.fliesAnyTime || month >= 4 && month <= 8 && warm), 120, 240, () => ({ dur: 45,
@@ -3065,7 +3065,7 @@ const Sky = (() => {
       const B = h.bats;
       for (const b of B.list) { b.x += B.vx * dt; b.ph += b.fq * dt; }
       if (B.list.every(b => B.vx > 0 ? b.x > Wd + 60 : b.x < -60)) { h.bats = null; N.bats = gap(25, 70); }
-    } else if ((h.dusk || /[?&]bats\b/.test(location.search)) && flyOK() && t > N.bats) {
+    } else if ((h.dusk || /[?&]bats\b/.test(location.search)) && !/hurricane|tornado/.test(mode.kind) && t > N.bats) {   // (any weather but hurricanes and tornadoes)
       const dir = Math.random() < .5 ? 1 : -1, y0 = Hd * rnd(.12, .32), k = sy * 1.3;
       h.bats = { k, vx: dir * 115 * Math.max(.6, Math.min(sx, 1.2)), list: Array.from({ length: 3 + Math.floor(Math.random() * 4) }, () =>
         ({ x: (dir > 0 ? -40 : Wd + 40) - dir * rnd(0, 240) * k, y: y0 + rnd(-60, 60) * k, ph: rnd(0, 6.3), fq: rnd(16, 20), wa: rnd(18, 36) * k, wf: rnd(2.5, 4.5), wp: rnd(0, 6.3) })) };
@@ -3075,7 +3075,7 @@ const Sky = (() => {
       const w = h.witch; w.t += dt;
       if (w.react && !w.said && w.t > w.dur * .6) { w.said = true; talk.react = 'witch'; }
       if (w.t > w.dur) { h.witch = null; N.witch = gap(90, 200); }
-    } else if (flyOK() && !stage.ev && t > N.witch) {
+    } else if (!/hurricane|tornado/.test(mode.kind) && !stage.ev && t > N.witch) {   // (any weather but hurricanes and tornadoes)
       const dir = Math.random() < .5 ? 1 : -1, v = 175 * Math.max(.6, Math.min(sx, 1.3)), moon = h.moonAt;
       h.witch = { t: 0, dur: (Wd + 340 * sx + 460 * Math.max(.6, Math.min(sy, Wd / 900)) * 1.2) / v, dir, v,   // (long enough for her banner to fly off too)
         slope: rnd(-.08, .08), react: Math.random() < .6,
@@ -3614,7 +3614,7 @@ const Sky = (() => {
     else if (kind === 'ranger') e.dur = 18;
     else if (kind === 'werewolf') { e.dur = 15; e.say = '…Did I just howl?'; }
     else if (kind === 'batcloud') { e.dur = 16; e.say = "I've got a bat breath problem."; }
-    else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Swedish Fish are my favorite!' : 'Happy Halloween, kids!'; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
+    else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Swedish Fish are my favorite!' : "Nothing beats Halloween s'mores!"; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
     return e;
   }
   function eventsTick(t) {
@@ -3663,7 +3663,7 @@ const Sky = (() => {
     for (const [key, next, gap] of [['heli', 'nextHeli', [180, 420]], ['jet', 'nextJet', [150, 360]]]) {
       const m = minor[key];
       if (m) { m.x = m.x0 + m.dir * m.v * (t - m.t0); if (m.dir > 0 ? m.x > Wd + m.tail : m.x < -m.tail) { minor[key] = null; minor[next] = t + (SHOWCASE ? rnd(2, 5) : rnd(...gap)); } }
-      if (!ok || minor[key] || t < minor[next]) continue;
+      if (!ok || minor[key] || t < minor[next] || key === 'heli' && mode.tod === 'night' && !hallo) continue;   // (no Black Hawks at night, except on Halloween)
       const dir = Math.random() < .5 ? 1 : -1, tall = Hd > Wd;
       const k = Hd / 1080 * (key === 'heli' ? (tall ? .5 : .62) : (tall ? .4 : .5));
       const tail = key === 'heli' ? 230 * k : 60 * k + Wd * .3;   // the trailing helicopters, or the contrail
@@ -4271,7 +4271,7 @@ const Sky = (() => {
     }
     flakes = []; for (let i = 0; i < Math.round((sc.snow || 0) * k * area); i++) { const r = rnd(1.2, 3.8) * sy * (sc.size || 1); flakes.push({ x: rnd(0, Wd), y: rnd(0, Hd), r, v: (20 + r * 18) * sy * (sc.fall || 1), ph: rnd(0, 6.3) }); }
     meteor = null; nextMeteor = performance.now() / 1000 + rnd(6, 25);
-    birds = !BAD_SKY.includes(kind) && S.display !== 'forest' && holidayNow() !== 'halloween'; flock = [];   // (no birds on Halloween, just bats)
+    birds = !BAD_SKY.includes(kind) && !night && S.display !== 'forest' && holidayNow() !== 'halloween'; flock = [];   // (seagulls any time but night; no birds on Halloween, just bats)
       // a flying random event: any weather but high wind and bad storms (the Forest has its own birds)
     nextFlock = performance.now() / 1000 + rnd(4, 12);   // first gulls soon after the scene starts
     stars = []; if (night && (kind === 'clear' || kind === 'partly' || kind === 'windy')) for (let i = 0; i < 170 * area; i++) stars.push({ x: rnd(0, Wd), y: rnd(0, .75) * Hd, r: rnd(.6, 1.9), ph: rnd(0, 6.3), sp: rnd(.4, 1.8) });
