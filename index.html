@@ -1971,6 +1971,7 @@ const Sky = (() => {
     const base = g.createLinearGradient(0, sea.top, 0, Hd);
     base.addColorStop(0, `rgb(${sea.pal[0]})`); base.addColorStop(1, `rgb(${sea.pal[1]})`);
     g.fillStyle = base; g.fillRect(0, sea.top - 2, Wd, Hd - sea.top + 2);
+    if (hallo && hallo.web) drawWebSpider(t, true);   // (the giant spider, while it's behind the lighthouse)
     drawLighthouse(t);   // on the horizon, behind every wave
     if (hallo) drawBigWeb(t);   // Halloween: the giant spider web off the lighthouse
     if (hallo && hallo.ship) drawGhostShip(t);
@@ -2074,9 +2075,11 @@ const Sky = (() => {
     x.fillStyle = gr; x.fillRect(0, f.top, Wd, Hd - f.top);
     x = xm;
     const spooky = holidayNow() === 'halloween' && S.display !== 'mirror';
+    f.midPines = [];   // (where they stand, for the Halloween spider to hide behind)
     for (let px = -20 * sx; px < Wd + 40 * sx; px += rnd(22, 40) * sx) {
       const by = f.top + rnd(10, 22) * sy, h = rnd(90, 165) * sy;
       pine(px, by, h, P.mid, f.snowy, P.trunk);
+      f.midPines.push({ px, by, h });
       if (spooky && Math.random() < .7) {   // Halloween: small cobwebs under the branches of most of these trees
         const i = Math.floor(rnd(0, 2.99)), b = by - h * (.12 + i * .2), side = Math.random() < .5 ? -1 : 1;
         cobweb(x, px + side * h * .025, b, h * .44 * (1 - i * .2) * .42, side > 0 ? .1 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI - .1, 0, f.night, false);
@@ -2188,6 +2191,7 @@ const Sky = (() => {
       if (!lean) { g.drawImage(img, 0, 0); return; }
       g.save(); g.transform(1, 0, -lean, 1, lean * base, 0); g.drawImage(img, 0, 0); g.restore();
     };
+    if (hallo && hallo.web) drawWebSpider(t, true);   // Halloween: the giant spider, while it's behind the trees
     layer(f.mid, f.midBase, forestLean(f, t, 0) * .6);
     if (ev && ev.kind === 'bigfoot') drawBigfoot(f, ev, t);   // in front of the middle row, behind everything else
     if (hallo && hallo.zombies) drawZombies(t, f.top + 40 * Hd / 1080, hallo.zombies.k);   // Halloween: zombies shuffling past, likewise
@@ -3067,19 +3071,27 @@ const Sky = (() => {
     // the Sky style's jack-o'-lanterns: [across the row of weather tiles, size], sitting on top of the tiles on the
     // right, clear of the high/low line (see drawHalloGround)
     h.lanterns = sea || forest || tropic ? [] : [[.5, .85], [.58, 1.1], [.66, .8], [.92, .9], [.99, 1.15]];
-    // the giant spider web: in the corner between the lighthouse's gallery and a long thread down to its jetty, or
-    // between the dead tree and the pines in the Forest; home is where the spider hides. (catch: a bat caught in it)
+    // the giant spider web: a triangle in the corner between the lighthouse and the rocks at its foot (on its left: the
+    // forecast boxes cover its right on a wide screen), or a round web between the dead tree and a pine in the Forest.
+    // (cx, cy) is its hub, rim the points its spokes run out to. The spider hides at home, behind the lighthouse or
+    // the pine, and comes out round its edge. (catch: a bat caught in it)
     h.web = null; h.catch = null;
     if (sea) {
-      const k = sea.lhK, bx = sea.lhX, by = sea.top + 2 * Hd / 1080, sd = -1;   // (on its left: the forecast boxes cover its right on a wide screen)
-      h.web = { k, cx: bx + sd * 32 * k, cy: by - 74 * k, R: 26 * k, home: [bx + sd * 12 * k, by - 107 * k],
-        anchors: [[bx + sd * 13 * k, by - 107 * k], [bx + sd * 11 * k, by - 80 * k], [bx + sd * 10 * k, by - 50 * k], [bx + sd * 38 * k, by - 3 * k], [bx + sd * 62 * k, by - 104 * k]] };
+      const k = sea.lhK, bx = sea.lhX, by = sea.top + 2 * Hd / 1080, rim = [];
+      const A = [bx - 9 * k, by - 104 * k], B = [bx - 13 * k, by - 3 * k], C = [bx - 56 * k, by - 2 * k];
+      for (const [p, q, m] of [[A, B, 9], [B, C, 5], [C, A, 8]]) for (let i = 0; i < m; i++) rim.push([lrp(p[0], q[0], i / m), lrp(p[1], q[1], i / m)]);
+      h.web = { k, sk: .9, cx: bx - 25 * k, cy: by - 34 * k, rim, anchors: [], home: [bx + 1 * k, by - 62 * k], edge: [bx - 16 * k, by - 62 * k] };
     } else if (forest) {
-      const n = forest.snag, sy = Hd / 1080, cx = n.x - 64 * sy, cy = n.y - n.h * .66;
-      h.web = { k: sy * 1.1, cx, cy, R: 40 * sy, home: [n.x - 4 * sy, n.y - n.h + 8 * sy],
-        anchors: [[n.x - 3 * sy, cy - 36 * sy], [n.x - 3 * sy, cy + 32 * sy], [cx - 58 * sy, cy - 48 * sy], [cx - 54 * sy, cy + 50 * sy], [cx + 4 * sy, cy - 70 * sy]] };
+      const n = forest.snag, sy = Hd / 1080, cx = n.x - 64 * sy, cy = n.y - n.h * .66, R = 40 * sy, want = cx - 82 * sy;
+      const P = (forest.midPines || []).filter(p => p.px < cx - 50 * sy && p.by - p.h * .8 < cy && p.by - p.h * .3 > cy)
+        .sort((a, b) => Math.abs(a.px - want) - Math.abs(b.px - want))[0];   // the pine it hides behind
+      const ty = cy - 6 * sy, home = P ? [P.px, ty] : [n.x - 4 * sy, n.y - n.h + 8 * sy], edge = P ? [P.px + P.h * .15, ty] : home;
+      const sp = Array.from({ length: 14 }, () => rnd(.88, 1.05));   // (the spokes, not quite even)
+      h.web = { k: sy * 1.1, sk: 1.15, cx, cy, home, edge,
+        rim: sp.map((r, i) => [cx + Math.cos(i / 14 * 6.283 + .2) * R * r, cy + Math.sin(i / 14 * 6.283 + .2) * R * r]),
+        anchors: [[n.x - 3 * sy, cy - 36 * sy], [n.x - 3 * sy, cy + 32 * sy], P ? [P.px + P.h * .1, cy - 40 * sy] : [cx - 58 * sy, cy - 48 * sy],
+          P ? [P.px + P.h * .19, cy + 36 * sy] : [cx - 54 * sy, cy + 50 * sy], edge, [cx + 4 * sy, cy - 70 * sy]] };
     }
-    if (h.web) h.web.sp = Array.from({ length: 14 }, () => rnd(.88, 1.05));   // (the spokes, not quite even)
     return h;
   }
   function harvestMoonSprite() {   // a big full moon, glowing orange
@@ -3612,8 +3624,8 @@ const Sky = (() => {
   // place, wraps the bat up in silk, and climbs back up; the bundle hangs there a while and fades. ?web brings one soon.
   function drawBigWeb(t) {
     const W = hallo.web, c = hallo.catch, k = W.k, ct = c ? c.t : -1;
-    const shake = ct > 3 && ct < 6 ? Math.sin(ct * 32) * 1.6 * k * (1 - (ct - 3) / 3) : 0, cx = W.cx + shake, cy = W.cy + shake * .5, n = W.sp.length;
-    const pt = (i, r) => { const a = i / n * 6.283 + .2; return [cx + Math.cos(a) * W.R * r * W.sp[i % n], cy + Math.sin(a) * W.R * r * W.sp[i % n]]; };
+    const shake = ct > 3 && ct < 6 ? Math.sin(ct * 32) * 1.6 * k * (1 - (ct - 3) / 3) : 0, cx = W.cx + shake, cy = W.cy + shake * .5, n = W.rim.length;
+    const pt = (i, r) => { const [rx, ry] = W.rim[i % n]; return [lrp(cx, rx + shake * r * .3, r), lrp(cy, ry, r)]; };   // (the rim's tied on, so it barely moves)
     g.save(); g.strokeStyle = hallo.night ? 'rgba(215,222,240,.5)' : 'rgba(255,255,255,.75)'; g.lineWidth = Math.max(.6, .6 * k); g.beginPath();
     for (const [ax, ay] of W.anchors) {   // threads out to where it's tied on, from the nearest spoke
       let best = 0, bd = Infinity;
@@ -3645,19 +3657,34 @@ const Sky = (() => {
       g.strokeStyle = 'rgba(120,120,130,.6)'; g.lineWidth = .6 * k; g.beginPath(); for (let i = -2; i <= 2; i++) { g.moveTo(-5 * k, i * 3 * k - 1.5 * k); g.lineTo(5 * k, i * 3 * k + 1.5 * k); } g.stroke();
     }
     g.restore();
-    // the spider: out of hiding, down its thread to the bat, wrapping, and back up
-    const [hx, hy] = W.home, sa = ramp(ct, 4.3, 5) * (1 - ramp(ct, 13.6, 14.4));
-    if (sa <= 0) return;
-    const down = ease(ramp(ct, 5, 8)) * (1 - ease(ramp(ct, 11, 13.5))), sx = lrp(hx, bx, down) + (ct > 8 && ct < 11 ? Math.sin(t * 7) * 3 * k : 0), sy = lrp(hy, by - 13 * k, down);
-    g.save(); g.globalAlpha = sa; g.strokeStyle = hallo.night ? 'rgba(215,222,240,.6)' : 'rgba(255,255,255,.8)'; g.lineWidth = Math.max(.6, .6 * k);
-    g.beginPath(); g.moveTo(hx, hy); g.lineTo(sx, sy - 9 * k); g.stroke();
-    drawSpider(sx, sy, k * 1.15, t, ct > 8 && ct < 11);
-    g.restore();
+    drawWebSpider(t, false);
   }
-  // A big hairy spider hanging head down from its thread: round abdomen with a red hourglass, eight jointed legs
-  // (scrabbling while it wraps), glowing red eyes. (x, y) is the middle of its body.
-  function drawSpider(x, y, k, t, busy) {
-    g.save(); g.translate(x, y); g.scale(k, k); g.lineCap = g.lineJoin = 'round';
+  // The spider's trip: out from behind the pine (or the lighthouse) to its edge, across the web to the bat, wrapping
+  // it, back to the edge and round behind again. behind: drawn before the trees/lighthouse (so they hide it), or after.
+  function webSpiderPos(t) {
+    const W = hallo.web, ct = hallo.catch.t, bat = [W.cx + 6 * W.k, W.cy + 5 * W.k];
+    const dx = bat[0] - W.edge[0], dy = bat[1] - W.edge[1], d = Math.hypot(dx, dy) || 1, near = [bat[0] - dx / d * 13 * W.k, bat[1] - dy / d * 13 * W.k];
+    const legs = [[4, 5.5, W.home, W.edge, true], [5.5, 8, W.edge, near, false], [8, 11, near, near, false], [11, 13.5, near, W.edge, false], [13.5, 15, W.edge, W.home, true]];
+    for (const [t0, t1, a, b, behind] of legs) if (ct >= t0 && ct < t1) {
+      const u = ease((ct - t0) / (t1 - t0)), busy = t0 === 8;
+      const ang = busy || t0 === 11 ? Math.atan2(dy, dx) - Math.PI / 2 : Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2;   // (head first, or towards the bat)
+      return { x: lrp(a[0], b[0], u) + (busy ? Math.sin(t * 7) * 2 * W.k : 0), y: lrp(a[1], b[1], u), ang, behind, busy };
+    }
+    return null;
+  }
+  function drawWebSpider(t, behind) {
+    const s = hallo.catch && webSpiderPos(t), W = hallo.web;
+    if (!s || s.behind !== behind) return;
+    if (!behind) {   // its dragline back to the edge it came round
+      g.save(); g.strokeStyle = hallo.night ? 'rgba(215,222,240,.5)' : 'rgba(255,255,255,.7)'; g.lineWidth = Math.max(.6, .5 * W.k);
+      g.beginPath(); g.moveTo(...W.edge); g.lineTo(s.x, s.y); g.stroke(); g.restore();
+    }
+    drawSpider(s.x, s.y, W.k * W.sk, t, true, s.ang);   // (legs scurrying)
+  }
+  // A big hairy spider: round abdomen with a red hourglass, eight jointed legs (scrabbling while it wraps), glowing
+  // red eyes. (x, y) is the middle of its body; ang turns it (0: head down).
+  function drawSpider(x, y, k, t, busy, ang = 0) {
+    g.save(); g.translate(x, y); g.rotate(ang); g.scale(k, k); g.lineCap = g.lineJoin = 'round';
     if (hallo.dusk) { g.shadowColor = 'rgba(255,160,80,.45)'; g.shadowBlur = 4; }
     g.strokeStyle = g.fillStyle = '#16121a'; g.lineWidth = 1.8;
     for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
