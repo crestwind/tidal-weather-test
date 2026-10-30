@@ -3614,7 +3614,7 @@ const Sky = (() => {
     else if (kind === 'ranger') e.dur = 18;
     else if (kind === 'werewolf') { e.dur = 15; e.say = '…Did I just howl?'; }
     else if (kind === 'batcloud') { e.dur = 16; e.say = "I've got a bat breath problem."; }
-    else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Save me a red one!' : 'Happy Halloween, kids!'; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
+    else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Swedish Fish are my favorite!' : 'Happy Halloween, kids!'; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
     return e;
   }
   function eventsTick(t) {
