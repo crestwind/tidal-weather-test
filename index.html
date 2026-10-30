@@ -1859,7 +1859,7 @@ const Sky = (() => {
     x.restore();
     x.strokeStyle = '#8b939b'; x.lineWidth = 2; x.beginPath(); x.moveTo(-76, -33); x.lineTo(70, -44); x.stroke();
     for (let px = -66; px <= 60; px += 21) { x.beginPath(); x.moveTo(px, -25 - px * .074); x.lineTo(px, -33 - px * .074); x.stroke(); }
-    drawFisher(x, t);
+    x.save(); x.globalAlpha = batCloudAlpha(); drawFisher(x, t); x.restore();   // (gone while he's a cloud of bats)
     if (sea.tint) { x.globalCompositeOperation = 'source-atop'; x.fillStyle = sea.tint; x.fillRect(-ox, -oy, W, H); x.globalCompositeOperation = 'source-over'; }
     if (hallo) drawPumpkin(x, 58, -34, 10.5, true, hallo.dim, t);   // Halloween: a jack-o'-lantern on the deck at the bow
     if (sea.lantern) {   // the lantern and cabin windows stay bright after the tint
@@ -1878,7 +1878,10 @@ const Sky = (() => {
     const limb = (col, w, ...pts) => { x.strokeStyle = col; x.lineWidth = w; x.beginPath(); pts.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.stroke(); };
     // his head, with a face like the camper's: eyes, a nose and a short grey beard, turned the way he's facing
     // (look: -1 left, 0 at us, 1 right); in the rain his face shows inside his hood
+    const wolf = wolfState(sea.bx);
     const head = (hx, hy, look = .55) => {
+      if (wolf.on) { look = wolf.side * .85; hx += wolf.shake * 1.2; }   // Halloween: looking up at the moon, then the werewolf
+      if (wolf.k > .45) { wolfHead(x, hx, hy, 8, wolf.side, wolf.k, wolf.howl); return; }
       if (sea.coat === 'rain') { x.fillStyle = coat; x.beginPath(); x.arc(hx, hy - .5, 8.3, 0, 7); x.fill(); }                         // hood
       x.fillStyle = skin; x.beginPath(); x.arc(hx, hy, sea.coat === 'rain' ? 5.8 : 6.5, 0, 7); x.fill();
       const ex = hx + look * 2.6;
@@ -1888,6 +1891,7 @@ const Sky = (() => {
       if (Math.abs(look) < .75) { x.beginPath(); x.arc(ex - 2, hy - 1.2, .75, 0, 7); x.fill(); }
       x.beginPath(); x.arc(ex + 2 * (look < -.75 ? -1 : 1), hy - 1.2, .75, 0, 7); x.fill();
       x.fillStyle = '#d99f78'; x.beginPath(); x.ellipse(ex + look * 1.8, hy + .7, 1.2, 1, 0, 0, 7); x.fill();                       // nose
+      if (wolf.k > 0) wolfHead(x, hx, hy, 8, wolf.side, wolf.k, false);
       if (hallo) { witchHat(x, hx, hy - (sea.coat === 'rain' ? 7 : 5.5), .85); return; }                                          // Halloween
       if (sea.coat === 'rain') return;
       if (sea.coat === 'snow') { x.fillStyle = '#e8e8e8'; x.beginPath(); x.arc(hx, hy - 2, 7.2, Math.PI, 0); x.fill(); x.beginPath(); x.arc(hx, hy - 10, 2.6, 0, 7); x.fill(); }   // beanie
@@ -1980,9 +1984,13 @@ const Sky = (() => {
     if (sea.pose === 'fish') drawJumps(t);   // leaping fish, only where he's fishing
     drawGlint(t, y, Hd);
     if (stage.ev) drawMajorFront(t, y);   // the UFO and its beam, Nessie's speech bubble
-    if (talk.line) {   // his head is at about (26, -76) in the boat's own units; follow the boat as it rocks
-      const hx = sea.bx + (26 * Math.cos(roll) + 76 * Math.sin(roll)) * sea.bs, hy = y + 4 * sea.bs + (26 * Math.sin(roll) - 76 * Math.cos(roll)) * sea.bs;
-      drawThought(t, hx, hy);
+    // his head is at about (26, -76) in the boat's own units; follow the boat as it rocks
+    const hx = sea.bx + (26 * Math.cos(roll) + 76 * Math.sin(roll)) * sea.bs, hy = y + 4 * sea.bs + (26 * Math.sin(roll) - 76 * Math.cos(roll)) * sea.bs;
+    if (talk.line) drawThought(t, hx, hy);
+    if (hallo && stage.ev) {   // Halloween: the werewolf's howl, and the cloud of bats round where he stands
+      const w = wolfState(sea.bx), e = stage.ev;
+      if (w.howl) drawSpeech('Awooooo!', hx, hy - 6 * sea.bs, Math.min(1, ramp(e.p, .34, .36), 1 - ramp(e.p, .54, .56)));
+      drawBatCloud(sea.bx + 26 * sea.bs, y - 50 * sea.bs, sea.bs, t);
     }
   }
 
@@ -2165,6 +2173,7 @@ const Sky = (() => {
     if (hallo && hallo.ghost) drawGhost(f, t);   // Halloween: rising from behind the middle row of trees
     layer(f.mid, f.midBase, forestLean(f, t, 0) * .6);
     if (ev && ev.kind === 'bigfoot') drawBigfoot(f, ev, t);   // in front of the middle row, behind everything else
+    if (hallo && hallo.zombies) drawZombies(t, f.top + 40 * Hd / 1080, hallo.zombies.k);   // Halloween: zombies shuffling past, likewise
     if (f.mist) {   // (thinning out just below the treeline, so there's no hard edge on the ground)
       const [r, gg, b, a] = f.mist, sy = Hd / 1080, mg = g.createLinearGradient(0, f.top + 10 * sy, 0, f.top + 90 * sy);
       mg.addColorStop(0, `rgba(${r},${gg},${b},${a})`); mg.addColorStop(1, `rgba(${r},${gg},${b},0)`);
@@ -2179,6 +2188,9 @@ const Sky = (() => {
     const running = bp >= .03 && bp < .11, coming = bp >= .86 && bp < .96, hiding = bp >= .11 && bp < .86;
     const bearX = ev && ev.kind === 'bear' ? bearPos(f, ev, lx)[0] : 0;
     f.look = .55; f.feetUp = 0; f.thumbs = 0;
+    const wolf = wolfState(lx);
+    if (wolf.on) f.look = wolf.side * .9;   // Halloween: looking up at the moon
+    if (stage.ev && stage.ev.kind === 'batcloud' && stage.ev.p < .2) f.look = 0;   // (a look at us before he turns into bats)
     if (ev && ev.p > .08 && ev.p < .9) {
       if (ev.kind === 'bigfoot') f.look = bigfootX(f, ev) < lx ? -.85 : .85;
       else if (ev.kind === 'raccoon' && ev.p > .25) f.look = -.9;
@@ -2213,7 +2225,7 @@ const Sky = (() => {
     } else if (coming) {   // crawls out of the door, stands up and walks back to his seat
       const u = (bp - .86) / .1, go = Math.max(0, (u - .25) / .75);
       drawCamperOnFoot(f, t, lrp(tx + 6 * k, lx, ease(go)), lrp(tb, f.gy, ease(go)), lrp(k, s, go), 1, go > 0 && go < 1 ? t * 9 : 0, false, 0, Math.min(1, u / .25));
-    } else if (lit && !hiding) drawCamper(f, t, lx);
+    } else if (lit && !hiding) { g.save(); g.globalAlpha = batCloudAlpha(); drawCamper(f, t, lx); g.restore(); }   // (gone while he's a cloud of bats)
     if (coon) drawRaccoon(f, ev, t, lx);
     drawCampfire(f, t);
     if (hallo) {   // jack-o'-lanterns by the fire, and one by the tent door
@@ -2242,6 +2254,10 @@ const Sky = (() => {
     if (talk.line) {   // his speech bubble, from his head by the fire or in the tent door
       const inTent = !lit || hiding;
       drawThought(t, inTent ? tx : lx + 6 * s, inTent ? tb - 40 * k : f.gy - 78 * s);
+    }
+    if (hallo && stage.ev) {   // Halloween: the werewolf's howl, and the cloud of bats round his seat
+      if (wolf.howl) drawSpeech('Awooooo!', lx + 6 * s, f.gy - 84 * s, Math.min(1, ramp(stage.ev.p, .34, .36), 1 - ramp(stage.ev.p, .54, .56)));
+      drawBatCloud(lx + 4 * s, f.gy - 52 * s, s, t);
     }
     if (ev && ev.kind === 'ranger' && ev.p > .6 && ev.p < .76) {   // the ranger's answer
       const r = rangerPos(f, ev);
@@ -2316,9 +2332,13 @@ const Sky = (() => {
     g.beginPath(); g.arc(ex + 3.2 * (look < -.75 ? -1 : 1), -1.5, 1.1, 0, 7); g.fill();
     g.fillStyle = C.skin; g.beginPath(); g.ellipse(ex + look * 3, 1.2, 1.8, 1.5, 0, 0, 7); g.fill();   // nose
     if (chew) { g.fillStyle = '#3a2214'; g.beginPath(); g.ellipse(ex + look * 2, 5, 2.2, .8 + Math.abs(Math.sin(t * 10)) * 1.2, 0, 0, 7); g.fill(); }
-    g.fillStyle = C.hat; g.beginPath(); g.arc(0, -4, 10.2, Math.PI * 1.02, Math.PI * 1.98); g.closePath(); g.fill();   // beanie
-    g.fillRect(-10.4, -6.5, 20.8, 3.4);   // its folded brim, just above his eyes
-    g.fillStyle = C.pom; g.beginPath(); g.arc(0, -15, 3.2, 0, 7); g.fill();
+    const wolf = forest ? wolfState(forest.fx - 100 * forest.s) : { k: 0 };   // Halloween: the werewolf
+    if (wolf.k < .45) {
+      g.fillStyle = C.hat; g.beginPath(); g.arc(0, -4, 10.2, Math.PI * 1.02, Math.PI * 1.98); g.closePath(); g.fill();   // beanie
+      g.fillRect(-10.4, -6.5, 20.8, 3.4);   // its folded brim, just above his eyes
+      g.fillStyle = C.pom; g.beginPath(); g.arc(0, -15, 3.2, 0, 7); g.fill();
+    }
+    if (wolf.k > 0) { g.translate(wolf.shake * 1.5, 0); wolfHead(g, 0, 0, 9.5, wolf.side, wolf.k, wolf.howl); }
     g.restore();
   }
   function drawCamper(f, t, lx) {   // sitting on the log, facing the fire on his right, the stick out over the flames
@@ -3002,10 +3022,11 @@ const Sky = (() => {
     const h = { night: tod === 'night', dusk: tod !== 'day', k: Math.min(Hd / 1080, Wd / 700),
       dim: tod === 'night' ? .42 : tod === 'golden' ? .25 : sc.tone === 'storm' ? .35 : sc.tone === 'dark' ? .2 : 0,   // how much to darken the pumpkins
       bats: null, witch: null, ship: null, ghost: null,
-      next: { bats: first('bats', 8, 25), witch: first('witch', 40, 100), ship: first('ghostship', 30, 90), ghost: first('ghost', 30, 90) } };
-    // the Sky style's jack-o'-lanterns: [across the screen, size], in the open corner under the temperature and between
-    // it and the forecast boxes
-    h.lanterns = sea || forest || tropic ? [] : wide ? [[.035, 1.1], [.075, .8], [.11, .95], [.4, .85], [.435, 1.15]] : [[.06, 1], [.15, .8], [.85, .85], [.94, 1.1]];
+      zombies: null, moon: null, moonAt: null,
+      next: { bats: first('bats', 8, 25), witch: first('witch', 40, 100), ship: first('ghostship', 30, 90), ghost: first('ghost', 30, 90), zombies: first('zombies', 30, 90) } };
+    // the Sky style's jack-o'-lanterns: [across the row of weather tiles, size], sitting on top of the tiles on the
+    // right, clear of the high/low line (see drawHalloGround)
+    h.lanterns = sea || forest || tropic ? [] : [[.5, .85], [.58, 1.1], [.66, .8], [.92, .9], [.99, 1.15]];
     return h;
   }
   function harvestMoonSprite() {   // a big full moon, glowing orange
@@ -3040,9 +3061,24 @@ const Sky = (() => {
       if (w.react && !w.said && w.t > w.dur * .6) { w.said = true; talk.react = 'witch'; }
       if (w.t > w.dur) { h.witch = null; N.witch = gap(90, 200); }
     } else if (flyOK() && !stage.ev && t > N.witch) {
-      const dir = Math.random() < .5 ? 1 : -1, v = 175 * Math.max(.6, Math.min(sx, 1.3)), moon = orb && h.night;
+      const dir = Math.random() < .5 ? 1 : -1, v = 175 * Math.max(.6, Math.min(sx, 1.3)), moon = h.moonAt;
       h.witch = { t: 0, dur: (Wd + 340 * sx) / v, dir, v, slope: rnd(-.08, .08), react: Math.random() < .6,
-        mx: moon ? orb.x : Wd * rnd(.25, .45), my: moon ? orb.y + rnd(-.012, .012) * Hd : Hd * rnd(.1, .28) };
+        mx: moon ? moon[0] : Wd * rnd(.25, .45), my: moon ? moon[1] + rnd(-.012, .012) * Hd : Hd * rnd(.1, .28) };
+    }
+    // zombies shuffling past: along the far edge of the clearing in the Forest, along the bottom in the Sky style
+    if (forest || !(sea || tropic)) {
+      const Z = h.zombies;
+      if (Z) {
+        for (const z of Z.list) { z.x += Z.dir * z.v * dt; z.ph += z.v / Z.k * dt * .16; }
+        if (Z.react && !Z.said && Z.list[0].x * Z.dir > (Z.dir > 0 ? Wd * .2 : -Wd * .3)) { Z.said = true; talk.react = 'zombies'; }
+        if (Z.list.every(z => Z.dir > 0 ? z.x > Wd + 60 * Z.k : z.x < -60 * Z.k)) { h.zombies = null; N.zombies = gap(100, 220); }
+      } else if (t > N.zombies && !/hurricane|tornado/.test(mode.kind) && !(forest && stage.ev && stage.ev.kind !== 'biplane')) {
+        const dir = Math.random() < .5 ? 1 : -1, k = forest ? forest.s * .8 : Math.min(sy, Wd / 700) * 1.5, n = 2 + Math.floor(Math.random() * 3);
+        const shirts = ['#5d4a6e', '#4a5f6e', '#6e554a', '#4f6248', '#6e4a4a'];
+        h.zombies = { dir, k, react: !!forest && Math.random() < .6, list: Array.from({ length: n }, (_, i) => ({
+          x: (dir > 0 ? -40 : Wd + 40) * 1 - dir * (i * rnd(55, 90) + rnd(0, 20)) * k, v: rnd(16, 22) * k, ph: rnd(0, 6.3), s: rnd(.9, 1.08), dy: rnd(-3, 3),
+          shirt: shirts[Math.floor(Math.random() * shirts.length)], lean: rnd(-.05, .12), tilt: rnd(-.35, .3) })) };
+      }
     }
     if (sea) {   // the ghost ship, drifting slowly along the horizon
       const s = h.ship, wide = Wd > Hd;
@@ -3161,9 +3197,16 @@ const Sky = (() => {
     c.fill(face);
     c.restore();
   }
-  function drawHalloGround(ts) {   // the Sky style's jack-o'-lanterns along the bottom (unlit in the rain)
-    const t = ts / 1000, h = hallo, lit = !sc.rain;
-    for (const [u, sz] of h.lanterns) drawPumpkin(g, u * Wd, Hd - 6 * h.k, 24 * h.k * sz, lit, h.dim, t);
+  // The Sky style's jack-o'-lanterns and zombies stand on top of the row of weather tiles (#stats) and move with it as
+  // the page scrolls; the zombies fade in partway along, so they don't walk through the temperature. Before the weather
+  // has loaded (no tiles yet) they use the bottom of the screen instead.
+  function drawHalloGround(ts) {   // (unlit in the rain)
+    const t = ts / 1000, h = hallo, lit = !sc.rain, st = document.getElementById('stats'), r = st && st.getBoundingClientRect();
+    const cr = cv.getBoundingClientRect(), fx = Wd / (cr.width || Wd), fy = Hd / (cr.height || Hd);   // (page to canvas units, in case they differ)
+    const ok = r && r.height > 0 && r.top * fy > Hd * .3 && r.top * fy < Hd;
+    const gy = ok ? r.top * fy - 1 : Hd - 6 * h.k, x0 = ok ? r.left * fx : 0, x1 = ok ? r.right * fx : Wd * .46;
+    if (h.zombies) drawZombies(t, gy + 2 * h.k, h.zombies.k, ok ? x0 + (x1 - x0) * .42 : -Infinity);   // (behind the pumpkins)
+    for (const [u, sz] of h.lanterns) drawPumpkin(g, lrp(x0, x1, u), gy, 24 * h.k * sz, lit, h.dim, t);
   }
   // The Ocean's ghost ship: a pale, see-through galleon with tattered sails, glowing faintly green, fading in and out
   // as it drifts along the horizon. Drawn just after the lighthouse, so every wave passes in front of it.
@@ -3243,6 +3286,95 @@ const Sky = (() => {
     c.restore();
   }
 
+  // ----- Halloween major random events (Ocean and Forest): the werewolf and the cloud of bats -----
+  // Werewolf: he looks up at the moon, shakes, turns into a werewolf, howls at the moon, and shakes back into himself
+  // ("…Did I just howl?"). Only while the moon is out. Cloud of bats: bats swirl round him, he vanishes into them, and
+  // they fly off into the sky; a little later they fly back, swirl, and there he is again ("Sorry, I had to fly.").
+  // ?event=werewolf or ?event=batcloud (with ?holiday=halloween) starts one in a couple of seconds.
+  const ramp = (p, a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+  function wolfState(manX) {   // how far he's turned (k 0-1), shaking, howling, and which side the moon is on
+    const e = stage.ev;
+    if (!e || e.kind !== 'werewolf') return { on: false, k: 0 };
+    const p = e.p, k = p < .3 ? ease(ramp(p, .12, .3)) : p < .62 ? 1 : 1 - ease(ramp(p, .62, .78));
+    const shaking = p > .12 && p < .3 || p > .62 && p < .78;
+    return { on: p > .03 && p < .82, k, shake: shaking ? Math.sin(performance.now() / 22) : 0, howl: p > .34 && p < .56,
+      side: hallo && hallo.moonAt && hallo.moonAt[0] < manX ? -1 : 1 };
+  }
+  // the wolf's head over his own, r = his head's radius, facing side (1 right, -1 left), nose up to the moon when howling
+  function wolfHead(c, x, y, r, side, k, howl) {
+    if (k <= 0) return;
+    c.save(); c.translate(x, y); c.scale(side * r / 10, r / 10); c.globalAlpha *= Math.min(1, k * 1.6);
+    const s = .55 + .45 * k; c.scale(s, s);
+    if (howl) c.rotate(-.55);
+    c.fillStyle = '#6b5d52'; c.beginPath();
+    for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2, rr = i % 2 ? 11 : 13.5; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + 1); }   // shaggy fur
+    c.fill();
+    c.beginPath(); c.moveTo(-9, -5); c.lineTo(-8, -20); c.lineTo(-2, -9); c.moveTo(0, -9); c.lineTo(5, -21); c.lineTo(8, -5); c.fill();   // ears
+    c.fillStyle = '#3f2a28'; c.beginPath(); c.moveTo(-7.5, -8); c.lineTo(-7.5, -16); c.lineTo(-4, -9); c.moveTo(2, -10); c.lineTo(5, -17); c.lineTo(6.5, -8); c.fill();
+    c.fillStyle = '#a3958a'; c.beginPath(); c.moveTo(3, -4); c.lineTo(18, -2); c.quadraticCurveTo(20.5, 1, 17, 3.5); c.lineTo(3, 6); c.closePath(); c.fill();   // snout
+    c.fillStyle = '#111'; c.beginPath(); c.ellipse(18.2, -.6, 2.2, 1.7, 0, 0, 7); c.fill();
+    if (howl) {   // mouth open, fangs showing
+      c.fillStyle = '#2a0f0f'; c.beginPath(); c.moveTo(5, 4); c.lineTo(16, 3); c.lineTo(8, 10); c.closePath(); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(13, 3.2); c.lineTo(14, 6); c.lineTo(15, 3.1); c.moveTo(8, 3.6); c.lineTo(9, 6.5); c.lineTo(10, 3.5); c.fill();
+    } else { c.strokeStyle = '#2a1a1a'; c.lineWidth = 1; c.beginPath(); c.moveTo(6, 4.5); c.lineTo(15, 3.4); c.stroke(); }
+    c.fillStyle = '#ffd23a'; c.beginPath(); c.ellipse(4, -4, 2, 1.5, 0, 0, 7); c.fill();   // yellow eye
+    c.fillStyle = '#111'; c.beginPath(); c.arc(4.6, -4, .8, 0, 7); c.fill();
+    c.restore();
+  }
+  // the cloud of bats: how much of him shows (0-1), and the bats round (cx, cy)
+  function batCloudAlpha() {
+    const e = stage.ev;
+    if (!e || e.kind !== 'batcloud') return 1;
+    return 1 - ramp(e.p, .12, .2) + ramp(e.p, .84, .92);
+  }
+  function drawBatCloud(cx, cy, k, t) {
+    const e = stage.ev;
+    if (!e || e.kind !== 'batcloud') return;
+    if (!e.bats) e.bats = Array.from({ length: 24 }, (_, i) => ({ a: rnd(0, 6.3), r: rnd(.3, 1), d: rnd(0, .07), sp: rnd(2.5, 4), ph: rnd(0, 6.3), fq: rnd(16, 22),
+      tx: (Math.random() < .5 ? -1 : 1) * rnd(.3, .7) * Wd, ty: -rnd(.5, .8) * Hd }));
+    const p = e.p, R = 58 * k, show = ramp(p, .07, .14) * (1 - ramp(p, .9, .96));
+    if (show <= 0) return;
+    for (const b of e.bats) {
+      const sx = cx + Math.cos(b.a + t * b.sp) * R * b.r, sy = cy + Math.sin(b.a + t * b.sp) * R * b.r * .85;
+      const out = ease(ramp(p, .22 + b.d, .42 + b.d)) * (1 - ease(ramp(p, .6 + b.d, .8 + b.d)));   // off to the sky, then back
+      const x = lrp(sx, cx + b.tx, out), y = lrp(sy, cy + b.ty, out);
+      g.save(); g.globalAlpha = show; g.translate(x, y); g.scale(k * 1.15, k * 1.15); g.rotate(Math.sin(t * 5 + b.ph) * .3);
+      const pth = batPath(Math.sin(t * b.fq + b.ph));
+      g.strokeStyle = 'rgba(255,170,100,.3)'; g.lineWidth = 1.4; g.stroke(pth); g.fillStyle = '#0b0a0e'; g.fill(pth);
+      g.restore();
+    }
+  }
+  // A zombie shambling along, arms stretched out in front, head lolling, one leg dragging; (x, y) is at its feet.
+  function drawZombie(c, x, y, k, dir, ph, z, dim) {
+    const col = h => `rgb(${mix(hexRgb(h), [16, 14, 30], dim)})`, sw = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 1.5;
+    c.save(); c.translate(x, y); c.scale(dir * k, k); c.lineCap = c.lineJoin = 'round';
+    c.strokeStyle = col('#3b3a4d'); c.lineWidth = 5;
+    c.beginPath(); c.moveTo(-1, -26 + bob); c.lineTo(-5 * sw - 1, -12); c.lineTo(-7 * sw - 4, 0); c.stroke();   // the dragging leg
+    c.beginPath(); c.moveTo(1, -26 + bob); c.lineTo(5 * sw + 1, -12); c.lineTo(6 * sw + 2, 0); c.stroke();
+    c.fillStyle = col('#2a2420'); c.beginPath(); c.ellipse(6 * sw + 4, -.5, 4, 1.8, 0, 0, 7); c.ellipse(-7 * sw - 2, -.5, 4, 1.8, 0, 0, 7); c.fill();
+    c.save(); c.translate(0, -25 + bob); c.rotate(.14 + z.lean);
+    c.strokeStyle = col(z.shirt); c.lineWidth = 3.6; c.beginPath(); c.moveTo(1, -18); c.lineTo(14, -17 + Math.sin(ph * .5) * 1.5); c.stroke();   // the arm behind
+    c.strokeStyle = col('#7f9e66'); c.beginPath(); c.moveTo(14, -17 + Math.sin(ph * .5) * 1.5); c.lineTo(20, -16 + Math.sin(ph * .5) * 1.5); c.stroke();
+    c.fillStyle = col(z.shirt); c.beginPath(); c.moveTo(-6, 0); c.lineTo(-7, -19); c.quadraticCurveTo(0, -23, 7, -19); c.lineTo(6, 0); c.lineTo(3, 3); c.lineTo(1, -1); c.lineTo(-2, 3); c.closePath(); c.fill();   // torn shirt
+    c.strokeStyle = col(z.shirt); c.beginPath(); c.moveTo(3, -17); c.lineTo(16, -14 + Math.sin(ph * .5 + 1) * 1.5); c.stroke();   // the arm in front
+    c.strokeStyle = col('#8fae74'); c.beginPath(); c.moveTo(16, -14 + Math.sin(ph * .5 + 1) * 1.5); c.lineTo(22, -13 + Math.sin(ph * .5 + 1) * 1.5); c.stroke();
+    c.translate(2, -25); c.rotate(z.tilt + Math.sin(ph * .5) * .08);
+    c.fillStyle = col('#8fae74'); c.beginPath(); c.arc(0, 0, 6.2, 0, 7); c.fill();
+    c.fillStyle = col('#2a2420'); c.beginPath(); c.arc(-.5, -1.5, 6.2, Math.PI * 1.05, Math.PI * 1.85); c.lineTo(-4, -2); c.closePath(); c.fill();   // messy hair
+    c.fillStyle = col('#24301e'); c.beginPath(); c.ellipse(3, -.8, 1.8, 2, 0, 0, 7); c.fill();   // sunken eye
+    c.fillStyle = dim > .3 ? 'rgba(220,255,180,.9)' : '#e8f0d8'; c.beginPath(); c.arc(3.2, -.8, .7, 0, 7); c.fill();
+    c.fillStyle = col('#3a1a1a'); c.beginPath(); c.ellipse(3.6, 3.4, 1.8, 1.4 + Math.abs(Math.sin(ph)) * .6, 0, 0, 7); c.fill();   // groaning
+    c.restore(); c.restore();
+  }
+  function drawZombies(t, y, k, fadeX = -Infinity) {   // (fading in and out at fadeX)
+    const Z = hallo.zombies;
+    for (const z of Z.list) {
+      const a = Math.max(0, Math.min(1, (z.x - fadeX) / (40 * k)));
+      if (a <= 0) continue;
+      g.save(); g.globalAlpha = a; drawZombie(g, z.x, y + z.dy * k, k * z.s, Z.dir, z.ph, z, hallo.dim); g.restore();
+    }
+  }
+
   /* ---------- Random events ---------- */
   // Major random events happen one at a time and never while the fisherman is thinking: the biplane, the giant, the
   // mermaid, the UFO, the eagle with the flag, and Nessie. A director starts one every 2½-5 minutes (the biplane first,
@@ -3261,7 +3393,7 @@ const Sky = (() => {
   const flyOK = () => !BAD_SKY.includes(mode.kind);
   const forced = (location.search.match(/[?&]event=(\w+)/) || [])[1] || (/[?&]plane\b/.test(location.search) ? 'biplane' : '');
   const stage = { ev: null, next: performance.now() / 1000 + (forced || SHOWCASE ? 2 : 30), last: '', lastOther: '', first: true };
-  const MAJORS = ['biplane', 'giant', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger'];   // (the last five: Forest style)
+  const MAJORS = ['biplane', 'giant', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger', 'werewolf', 'batcloud'];   // (bigfoot to ranger: Forest style; the last two: Halloween)
   const saluting = () => !!(stage.ev && stage.ev.kind === 'eagle' && sea && (sea.pose === 'fish' || sea.pose === 'mug'));
   const ease = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
   const randFish = () => FISH[Math.floor(Math.random() * FISH.length)];
@@ -3277,6 +3409,7 @@ const Sky = (() => {
       case 'nessie': return !!sea && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bigfoot': return !!forest && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bear': case 'raccoon': case 'skunk': case 'ranger': return !!forest && !forest.inside;   // he has to be out by the fire
+      case 'werewolf': case 'batcloud': return !!hallo && !!(sea ? (sea.pose === 'fish' || sea.pose === 'mug') : forest && !forest.inside) && (kind === 'werewolf' ? !!hallo.moonAt : flyOK());   // Halloween: the werewolf needs the moon out
     }
     return false;
   }
@@ -3293,6 +3426,8 @@ const Sky = (() => {
     else if (kind === 'raccoon') { e.dur = 13; e.say = 'Hey! Those were mine!'; }
     else if (kind === 'skunk') { e.dur = 16; e.say = 'Phew. That was close.'; }
     else if (kind === 'ranger') e.dur = 18;
+    else if (kind === 'werewolf') { e.dur = 15; e.say = '…Did I just howl?'; }
+    else if (kind === 'batcloud') { e.dur = 16; e.say = 'Sorry, I had to fly.'; }
     return e;
   }
   function eventsTick(t) {
@@ -3321,6 +3456,8 @@ const Sky = (() => {
     }
     if (!kind || !MAJORS.includes(kind) || !eligible(kind)) {
       const pool = MAJORS.filter(k => k !== 'biplane' && k !== stage.lastOther && eligible(k));
+      const spooky = pool.filter(k => k === 'werewolf' || k === 'batcloud');   // (on Halloween, half the in-between events are spooky ones)
+      if (spooky.length && Math.random() < .5) pool.splice(0, pool.length, ...spooky);
       // (only if nothing else can happen in this weather does the last one repeat)
       kind = pool[Math.floor(Math.random() * pool.length)] || (eligible(stage.lastOther) ? stage.lastOther : '') || (eligible('biplane') ? 'biplane' : '');
     }
@@ -3973,7 +4110,11 @@ const Sky = (() => {
     forest = buildForest();
     tropic = buildTropic();
     hallo = buildHalloween();
-    if (hallo && night && orb) orb = { img: harvestMoonSprite(), x: Wd * .42, y: Hd * .18 };   // Halloween's big orange moon
+    if (hallo && (kind === 'clear' || kind === 'partly' || kind === 'windy')) {   // Halloween's big orange moon, out day and night
+      if (night) orb = { img: harvestMoonSprite(), x: Wd * .42, y: Hd * .18 };
+      else hallo.moon = { img: harvestMoonSprite(), x: Wd * .27, y: Hd * .2 };   // (by day, left of the sun)
+      hallo.moonAt = night ? [orb.x, orb.y] : [hallo.moon.x, hallo.moon.y];
+    }
     tornado = buildTornado();
   }
 
@@ -4115,6 +4256,7 @@ const Sky = (() => {
       }
       g.drawImage(orb.img, orb.x - orb.img.width / 2, orb.y - orb.img.height / 2);
     }
+    if (hallo && hallo.moon) { const m = hallo.moon; g.globalAlpha = .92; g.drawImage(m.img, m.x - m.img.width / 2, m.y - m.img.height / 2); g.globalAlpha = 1; }
     if (swirl) {
       // two layers of spiral bands turning at different speeds give the storm depth
       const D = Wd * 2.6;

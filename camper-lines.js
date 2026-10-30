@@ -266,4 +266,10 @@ window.TW_CAMP_LINES = {
     "I knew these woods were haunted!",
     "Boo to you too!",
   ],
+  zombies: [
+    "Are those… zombies?!",
+    "Nobody make a sound.",
+    "They're walking awfully slow. Good.",
+    "Do zombies like marshmallows?",
+  ],
 };
