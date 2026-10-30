@@ -283,6 +283,12 @@ window.TW_LINES = {
     "Nice flag. Very subtle.",
     "They better not be after my cooler.",
   ],
+  spider: [
+    "That is the biggest spider I've ever seen.",
+    "Poor little bat.",
+    "Nope. Not going near that lighthouse.",
+    "Somebody call an exterminator!",
+  ],
   ghostship: [
     "Is that ship… see-through?",
     "I'm not fishing over there.",

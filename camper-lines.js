@@ -266,10 +266,18 @@ window.TW_CAMP_LINES = {
     "I knew these woods were haunted!",
     "Boo to you too!",
   ],
+  spider: [
+    "That is the biggest spider I've ever seen.",
+    "Poor little bat.",
+    "I'm sleeping with the tent zipped tonight.",
+    "Nope. Nope nope nope.",
+  ],
   zombies: [
     "Are those… zombies?!",
     "Nobody make a sound.",
     "They're walking awfully slow. Good.",
     "Do zombies like marshmallows?",
+    "Are those skeletons with them?!",
+    "Look at those bones go!",
   ],
 };

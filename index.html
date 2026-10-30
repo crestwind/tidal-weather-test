@@ -1882,6 +1882,7 @@ const Sky = (() => {
     const head = (hx, hy, look = .55) => {
       if (wolf.on) { look = wolf.side * .85; hx += wolf.shake * 1.2; }   // Halloween: looking up at the moon, then the werewolf
       if (trickOrTreat()) look = -.85;   // (and at the trick-or-treaters)
+      if (reaperLook()) look = -.85;   // (and at the Grim Reaper)
       if (wolf.k > .45) { wolfHead(x, hx, hy, 8, wolf.side, wolf.k, wolf.howl); return; }
       if (sea.coat === 'rain') { x.fillStyle = coat; x.beginPath(); x.arc(hx, hy - .5, 8.3, 0, 7); x.fill(); }                         // hood
       x.fillStyle = skin; x.beginPath(); x.arc(hx, hy, sea.coat === 'rain' ? 5.8 : 6.5, 0, 7); x.fill();
@@ -1971,6 +1972,7 @@ const Sky = (() => {
     base.addColorStop(0, `rgb(${sea.pal[0]})`); base.addColorStop(1, `rgb(${sea.pal[1]})`);
     g.fillStyle = base; g.fillRect(0, sea.top - 2, Wd, Hd - sea.top + 2);
     drawLighthouse(t);   // on the horizon, behind every wave
+    if (hallo) drawBigWeb(t);   // Halloween: the giant spider web off the lighthouse
     if (hallo && hallo.ship) drawGhostShip(t);
     if (tornado) drawSpray(t);
     for (let i = 0; i <= b; i++) { drawLayer(L[i], t); drawDolphins(t, i); drawSwimmers(t, i); if (i === 1 && stage.ev && stage.ev.kind === 'nessie') drawNessie(t); }
@@ -1998,6 +2000,7 @@ const Sky = (() => {
       if (w.howl) drawSpeech('Awooooo!', hx, hy - 6 * sea.bs, Math.min(1, ramp(e.p, .34, .36), 1 - ramp(e.p, .54, .56)));
       drawBatCloud(sea.bx + 26 * sea.bs, y - 50 * sea.bs, sea.bs, t);
       if (e.kind === 'trickortreat') drawTreats(e, t, hx - 14 * sea.bs, hy + 28 * sea.bs, 70 * sea.bs, sea.bs);   // Swedish Fish for each of them
+      if (e.kind === 'reaper') drawReaper(e, t, sea.bx - 215 * sea.bs, y - 4 * sea.bs, sea.bs * .9);   // the Grim Reaper, floating over the water
     }
   }
 
@@ -2070,7 +2073,15 @@ const Sky = (() => {
     gr.addColorStop(0, P.g0); gr.addColorStop(1, P.g1);
     x.fillStyle = gr; x.fillRect(0, f.top, Wd, Hd - f.top);
     x = xm;
-    for (let px = -20 * sx; px < Wd + 40 * sx; px += rnd(22, 40) * sx) pine(px, f.top + rnd(10, 22) * sy, rnd(90, 165) * sy, P.mid, f.snowy, P.trunk);
+    const spooky = holidayNow() === 'halloween' && S.display !== 'mirror';
+    for (let px = -20 * sx; px < Wd + 40 * sx; px += rnd(22, 40) * sx) {
+      const by = f.top + rnd(10, 22) * sy, h = rnd(90, 165) * sy;
+      pine(px, by, h, P.mid, f.snowy, P.trunk);
+      if (spooky && Math.random() < .7) {   // Halloween: small cobwebs under the branches of most of these trees
+        const i = Math.floor(rnd(0, 2.99)), b = by - h * (.12 + i * .2), side = Math.random() < .5 ? -1 : 1;
+        cobweb(x, px + side * h * .025, b, h * .44 * (1 - i * .2) * .42, side > 0 ? .1 : Math.PI / 2, side > 0 ? Math.PI / 2 : Math.PI - .1, 0, f.night, false);
+      }
+    }
     f.mist = kind === 'fog' || greyed ? (f.night ? [40, 50, 64, .25] : [210, 218, 222, .22]) : null;   // mist among the trees
     x = x0;
     // a few patches and tufts on the forest floor
@@ -2190,6 +2201,7 @@ const Sky = (() => {
       drawGhost(t, hallo.ghost.x, f.top + 40 * sy - 48 * gk, f.top - 120 * sy, gk, f.night);
     }
     drawSnag(f, t);
+    if (hallo) drawBigWeb(t);   // Halloween: the giant spider web between the dead tree and the pines
     if (f.deer) drawDeer(f, t);
     const tx = f.fx - 215 * s, tb = f.gy - 34 * s, k = s * .9, lx = f.fx - 100 * s;   // the tent, set back on the left; his log
     // When the bear turns up he jumps up, runs to the tent and dives in, watches it from the doorway, and once it's
@@ -2202,6 +2214,7 @@ const Sky = (() => {
     if (wolf.on) f.look = wolf.side * .9;   // Halloween: looking up at the moon
     if (stage.ev && stage.ev.kind === 'batcloud' && stage.ev.p < .2) f.look = 0;   // (a look at us before he turns into bats)
     if (trickOrTreat()) f.look = -.9;   // (at the trick-or-treaters)
+    if (reaperLook()) f.look = -.9;   // (at the Grim Reaper)
     if (ev && ev.p > .08 && ev.p < .9) {
       if (ev.kind === 'bigfoot') f.look = bigfootX(f, ev) < lx ? -.85 : .85;
       else if (ev.kind === 'raccoon' && ev.p > .25) f.look = -.9;
@@ -2245,6 +2258,9 @@ const Sky = (() => {
       if (stage.ev && stage.ev.kind === 'trickortreat') {   // trick-or-treaters walking up to him; he hands out marshmallows
         drawKidsWalking(stage.ev, t, lx - 62 * s, f.gy + 12 * s, s * 1.45);
         drawTreats(stage.ev, t, lx - 6 * s, f.gy - 50 * s, 40 * s, s);
+      }
+      if (stage.ev && stage.ev.kind === 'reaper') {   // the Grim Reaper floating up to point at him
+        drawReaper(stage.ev, t, lx - 175 * s, f.gy + 2 * s, s * .95);
       }
     }
     if (ev && ev.kind === 'skunk') drawSkunk(f, ev, t, lx);   // in front of the log and the fire
@@ -3047,10 +3063,23 @@ const Sky = (() => {
       dim: tod === 'night' ? .42 : tod === 'golden' ? .25 : sc.tone === 'storm' ? .35 : sc.tone === 'dark' ? .2 : 0,   // how much to darken the pumpkins
       bats: null, witch: null, ship: null, ghost: null,
       zombies: null, moon: null, moonAt: null,
-      next: { bats: first('bats', 8, 25), witch: first('witch', 40, 100), ship: first('(ghostship|pirateship)', 30, 90), ghost: first('ghost', 30, 90), zombies: first('zombies', 30, 90) } };
+      next: { bats: first('bats', 8, 25), witch: first('witch', 40, 100), ship: first('(ghostship|pirateship)', 30, 90), ghost: first('ghost', 30, 90), web: first('web', 30, 90), zombies: first('zombies', 30, 90) } };
     // the Sky style's jack-o'-lanterns: [across the row of weather tiles, size], sitting on top of the tiles on the
     // right, clear of the high/low line (see drawHalloGround)
     h.lanterns = sea || forest || tropic ? [] : [[.5, .85], [.58, 1.1], [.66, .8], [.92, .9], [.99, 1.15]];
+    // the giant spider web: in the corner between the lighthouse's gallery and a long thread down to its jetty, or
+    // between the dead tree and the pines in the Forest; home is where the spider hides. (catch: a bat caught in it)
+    h.web = null; h.catch = null;
+    if (sea) {
+      const k = sea.lhK, bx = sea.lhX, by = sea.top + 2 * Hd / 1080, sd = -1;   // (on its left: the forecast boxes cover its right on a wide screen)
+      h.web = { k, cx: bx + sd * 32 * k, cy: by - 74 * k, R: 26 * k, home: [bx + sd * 12 * k, by - 107 * k],
+        anchors: [[bx + sd * 13 * k, by - 107 * k], [bx + sd * 11 * k, by - 80 * k], [bx + sd * 10 * k, by - 50 * k], [bx + sd * 38 * k, by - 3 * k], [bx + sd * 62 * k, by - 104 * k]] };
+    } else if (forest) {
+      const n = forest.snag, sy = Hd / 1080, cx = n.x - 64 * sy, cy = n.y - n.h * .66;
+      h.web = { k: sy * 1.1, cx, cy, R: 40 * sy, home: [n.x - 4 * sy, n.y - n.h + 8 * sy],
+        anchors: [[n.x - 3 * sy, cy - 36 * sy], [n.x - 3 * sy, cy + 32 * sy], [cx - 58 * sy, cy - 48 * sy], [cx - 54 * sy, cy + 50 * sy], [cx + 4 * sy, cy - 70 * sy]] };
+    }
+    if (h.web) h.web.sp = Array.from({ length: 14 }, () => rnd(.88, 1.05));   // (the spokes, not quite even)
     return h;
   }
   function harvestMoonSprite() {   // a big full moon, glowing orange
@@ -3102,7 +3131,7 @@ const Sky = (() => {
         const shirts = ['#5d4a6e', '#4a5f6e', '#6e554a', '#4f6248', '#6e4a4a'];
         h.zombies = { dir, k, react: !!forest && Math.random() < .6, list: Array.from({ length: n }, (_, i) => ({
           x: (dir > 0 ? -40 : Wd + 40) * 1 - dir * (i * rnd(55, 90) + rnd(0, 20)) * k, v: rnd(16, 22) * k, ph: rnd(0, 6.3), s: rnd(.9, 1.08), dy: rnd(-3, 3),
-          shirt: shirts[Math.floor(Math.random() * shirts.length)], lean: rnd(-.05, .12), tilt: rnd(-.35, .3) })) };
+          shirt: shirts[Math.floor(Math.random() * shirts.length)], lean: rnd(-.05, .12), tilt: rnd(-.35, .3), skel: i % 2 === 1 && Math.random() < .8 })) };   // (every other one or so a skeleton)
       }
     }
     if (sea) {   // the ghost ship or the pirate ship, sailing slowly along the horizon
@@ -3116,6 +3145,14 @@ const Sky = (() => {
         const pirate = /[?&]pirateship\b/.test(q) ? true : /[?&]ghostship\b/.test(q) ? false : Math.random() < .5;
         h.ship = { t: 0, dur: 45, dir, x0: dir > 0 ? a : b, x1: dir > 0 ? b : a, react: Math.random() < .6, pirate };
       }
+    }
+    if (h.web) {   // now and then a bat flies into the giant web and the spider comes down for it
+      const c = h.catch;
+      if (c) {
+        c.t += dt;
+        if (c.react && !c.said && c.t > 9) { c.said = true; talk.react = 'spider'; }
+        if (c.t > c.dur) { h.catch = null; N.web = gap(100, 220); }
+      } else if (t > N.web && !/hurricane|tornado/.test(mode.kind)) h.catch = { t: 0, dur: 18, from: Math.random() < .5 ? -1 : 1, react: Math.random() < .6 };
     }
     if (forest || sea) {   // the ghost: up from the ground in front of the trees, or out of the sea by the boat
       const gh = h.ghost;
@@ -3345,7 +3382,7 @@ const Sky = (() => {
     g.restore();
   }
   // A cobweb in a corner at (x, y), spanning the angles a0 to a1, with a little spider hanging from it.
-  function cobweb(c, x, y, R, a0, a1, t, night) {
+  function cobweb(c, x, y, R, a0, a1, t, night, spider = true) {
     c.save(); c.translate(x, y);
     c.strokeStyle = night ? 'rgba(220,225,240,.55)' : 'rgba(255,255,255,.8)'; c.lineWidth = .6;
     const n = 5, ang = i => a0 + (a1 - a0) * i / (n - 1);
@@ -3356,6 +3393,7 @@ const Sky = (() => {
       c.moveTo(...p0); c.quadraticCurveTo((p0[0] + p1[0]) * .42, (p0[1] + p1[1]) * .42, ...p1);   // (sagging in toward the corner)
     }
     c.stroke();
+    if (!spider) { c.restore(); return; }
     const am = (a0 + a1) / 2, sx = Math.cos(am) * R * .55, sy = Math.sin(am) * R * .55, drop = 10 + Math.sin(t * .9) * 4;
     c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx, sy + drop); c.stroke();
     c.fillStyle = '#141414'; c.beginPath(); c.arc(sx, sy + drop + 2, 2.2, 0, 7); c.fill();
@@ -3459,7 +3497,7 @@ const Sky = (() => {
     for (const z of Z.list) {
       const a = Math.max(0, Math.min(1, (z.x - fadeX) / (40 * k)));
       if (a <= 0) continue;
-      g.save(); g.globalAlpha = a; drawZombie(g, z.x, y + z.dy * k, k * z.s, Z.dir, z.ph, z, hallo.dim); g.restore();
+      g.save(); g.globalAlpha = a; (z.skel ? drawSkeleton : drawZombie)(g, z.x, y + z.dy * k, k * z.s, Z.dir, z.ph, z, hallo.dim); g.restore();
     }
   }
   // ----- Halloween major random event: trick-or-treaters (Ocean and Forest) -----
@@ -3569,6 +3607,112 @@ const Sky = (() => {
       g.restore();
     });
   }
+  // ----- Halloween: the giant spider web, and the spider that comes down when a bat gets caught in it -----
+  // A bat flies in and sticks (the web shakes), struggles, the giant spider comes down on a thread from its hiding
+  // place, wraps the bat up in silk, and climbs back up; the bundle hangs there a while and fades. ?web brings one soon.
+  function drawBigWeb(t) {
+    const W = hallo.web, c = hallo.catch, k = W.k, ct = c ? c.t : -1;
+    const shake = ct > 3 && ct < 6 ? Math.sin(ct * 32) * 1.6 * k * (1 - (ct - 3) / 3) : 0, cx = W.cx + shake, cy = W.cy + shake * .5, n = W.sp.length;
+    const pt = (i, r) => { const a = i / n * 6.283 + .2; return [cx + Math.cos(a) * W.R * r * W.sp[i % n], cy + Math.sin(a) * W.R * r * W.sp[i % n]]; };
+    g.save(); g.strokeStyle = hallo.night ? 'rgba(215,222,240,.5)' : 'rgba(255,255,255,.75)'; g.lineWidth = Math.max(.6, .6 * k); g.beginPath();
+    for (const [ax, ay] of W.anchors) {   // threads out to where it's tied on, from the nearest spoke
+      let best = 0, bd = Infinity;
+      for (let i = 0; i < n; i++) { const [px, py] = pt(i, 1), d = Math.hypot(px - ax, py - ay); if (d < bd) { bd = d; best = i; } }
+      g.moveTo(...pt(best, 1)); g.lineTo(ax, ay);
+    }
+    for (let i = 0; i < n; i++) { g.moveTo(cx, cy); g.lineTo(...pt(i, 1)); }   // spokes
+    for (let r = .14; r < 1.02; r += .12) {   // the spiral, sagging a little between spokes
+      g.moveTo(...pt(0, r));
+      for (let i = 1; i <= n; i++) { const p0 = pt(i - 1, r), p1 = pt(i, r); g.quadraticCurveTo((p0[0] + p1[0]) / 2 * .94 + cx * .06, (p0[1] + p1[1]) / 2 * .94 + cy * .06, ...p1); }
+    }
+    g.stroke(); g.restore();
+    if (!c) return;
+    // the bat: flying in, then stuck (struggling), then wrapped into a white bundle that fades at the end
+    const bx = cx + 6 * k, by = cy + 5 * k, wrap = ease(ramp(ct, 8.5, 10.5)), fade = 1 - ramp(ct, 15.5, 18);
+    let x = bx, y = by, wing = Math.sin(t * 18);
+    if (ct < 3) {
+      const u = ease(ct / 3);
+      x = lrp(cx + c.from * Wd * .35, bx, u); y = lrp(cy - Hd * .14, by, u) + Math.sin(ct * 6) * 12 * k * (1 - u);
+    } else wing = Math.sin(t * 26) * .5 * (1 - wrap);   // stuck: little frantic flaps
+    g.save(); g.globalAlpha = fade; g.translate(x, y);
+    if (wrap < 1) {
+      g.save(); g.scale(k * 1.3, k * 1.3); g.rotate(ct > 3 ? Math.sin(t * 9) * .15 * (1 - wrap) : 0); g.globalAlpha *= 1 - wrap;
+      const p = batPath(wing); g.strokeStyle = 'rgba(255,170,100,.35)'; g.lineWidth = 1.4; g.stroke(p); g.fillStyle = '#0b0a0e'; g.fill(p);
+      g.restore();
+    }
+    if (wrap > 0) {   // the silk bundle
+      g.globalAlpha *= wrap; g.fillStyle = hallo.night ? '#cfd3dc' : '#f2f2ee'; g.beginPath(); g.ellipse(0, 0, 5 * k, 8 * k, 0, 0, 7); g.fill();
+      g.strokeStyle = 'rgba(120,120,130,.6)'; g.lineWidth = .6 * k; g.beginPath(); for (let i = -2; i <= 2; i++) { g.moveTo(-5 * k, i * 3 * k - 1.5 * k); g.lineTo(5 * k, i * 3 * k + 1.5 * k); } g.stroke();
+    }
+    g.restore();
+    // the spider: out of hiding, down its thread to the bat, wrapping, and back up
+    const [hx, hy] = W.home, sa = ramp(ct, 4.3, 5) * (1 - ramp(ct, 13.6, 14.4));
+    if (sa <= 0) return;
+    const down = ease(ramp(ct, 5, 8)) * (1 - ease(ramp(ct, 11, 13.5))), sx = lrp(hx, bx, down) + (ct > 8 && ct < 11 ? Math.sin(t * 7) * 3 * k : 0), sy = lrp(hy, by - 13 * k, down);
+    g.save(); g.globalAlpha = sa; g.strokeStyle = hallo.night ? 'rgba(215,222,240,.6)' : 'rgba(255,255,255,.8)'; g.lineWidth = Math.max(.6, .6 * k);
+    g.beginPath(); g.moveTo(hx, hy); g.lineTo(sx, sy - 9 * k); g.stroke();
+    drawSpider(sx, sy, k * 1.15, t, ct > 8 && ct < 11);
+    g.restore();
+  }
+  // A big hairy spider hanging head down from its thread: round abdomen with a red hourglass, eight jointed legs
+  // (scrabbling while it wraps), glowing red eyes. (x, y) is the middle of its body.
+  function drawSpider(x, y, k, t, busy) {
+    g.save(); g.translate(x, y); g.scale(k, k); g.lineCap = g.lineJoin = 'round';
+    if (hallo.dusk) { g.shadowColor = 'rgba(255,160,80,.45)'; g.shadowBlur = 4; }
+    g.strokeStyle = g.fillStyle = '#16121a'; g.lineWidth = 1.8;
+    for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const w = Math.sin(t * (busy ? 14 : 3) + i * 1.3 + s) * (busy ? 2.5 : 1), ky = -4 + i * 4.5;
+      g.beginPath(); g.moveTo(s * 3, 2 + i * 1.6); g.lineTo(s * (13 + i % 2 * 2), ky - 5 + w); g.lineTo(s * (17 + i), ky + 7 + w); g.stroke();
+    }
+    g.beginPath(); g.ellipse(0, -7, 8.5, 10.5, 0, 0, 7); g.fill();   // abdomen (up, where the thread is)
+    g.beginPath(); g.arc(0, 5, 5.5, 0, 7); g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#b3202a'; g.beginPath(); g.moveTo(-2.4, -11); g.lineTo(2.4, -11); g.lineTo(0, -7.5); g.lineTo(2.4, -4); g.lineTo(-2.4, -4); g.lineTo(0, -7.5); g.closePath(); g.fill();   // hourglass
+    g.fillStyle = hallo.night ? '#ff4a3a' : '#d8302a'; for (const ex of [-2, 2]) { g.beginPath(); g.arc(ex, 8, 1.1, 0, 7); g.fill(); }
+    g.restore();
+  }
+  // ----- Halloween major random event: the Grim Reaper (Ocean and Forest) -----
+  // He floats in from the left, stops a little way off, raises a bony finger and points at the fisherman (or the
+  // camper), holds it a moment, then fades away. ?event=reaper (with ?holiday=halloween) starts it in a couple of seconds.
+  const reaperLook = () => !!(stage.ev && stage.ev.kind === 'reaper' && stage.ev.p > .25 && stage.ev.p < .82);
+  function drawReaper(e, t, x1, y, k) {   // (x1, y): where he stops, at the bottom of his robe
+    const p = e.p, x = lrp(-90 * k, x1, ease(ramp(p, 0, .35))), yy = y - (8 + Math.sin(t * 1.6) * 4) * k;
+    const a = Math.min(1, p / .05) * (1 - ramp(p, .7, .86)), pt = ease(ramp(p, .4, .46)) * (1 - ease(ramp(p, .66, .7)));
+    if (a <= 0) return;
+    g.save(); g.globalAlpha = a; g.translate(x, yy); g.scale(k, k); g.lineCap = g.lineJoin = 'round';
+    if (hallo.dusk) { g.shadowColor = 'rgba(170,190,255,.55)'; g.shadowBlur = 8; }   // a cold glow round him in the dark
+    g.strokeStyle = '#4a3a2c'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(-14, -30); g.lineTo(-8, -142); g.stroke();   // the scythe
+    g.fillStyle = '#b9bec6'; g.beginPath(); g.moveTo(-8, -142); g.quadraticCurveTo(-30, -152, -52, -126); g.quadraticCurveTo(-30, -141, -9, -134); g.closePath(); g.fill();
+    g.fillStyle = '#141218'; g.beginPath(); g.moveTo(-6, -110); g.quadraticCurveTo(10, -116, 15, -100); g.lineTo(16, -84); g.quadraticCurveTo(24, -40, 22, -4);   // the robe and hood
+    for (let i = 1; i <= 6; i++) g.lineTo(22 - i * 7.5, (i % 2 ? 6 : -4) + Math.sin(t * 4 + i) * 3);   // (tattered, drifting)
+    g.quadraticCurveTo(-26, -40, -16, -84); g.quadraticCurveTo(-14, -104, -6, -110); g.closePath(); g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#000'; g.beginPath(); g.ellipse(7, -93, 7, 9.5, -.15, 0, 7); g.fill();   // nothing inside the hood but darkness
+    g.fillStyle = hallo.night ? '#ff5a3a' : '#e04a2a'; g.beginPath(); g.arc(6.5, -95, 1.3, 0, 7); g.arc(11, -95.5, 1.3, 0, 7); g.fill();   // and two red eyes
+    g.strokeStyle = '#141218'; g.lineWidth = 6; g.beginPath(); g.moveTo(-6, -84); g.lineTo(-11, -62); g.stroke();   // his arm to the scythe
+    g.fillStyle = '#e6e2d6'; g.beginPath(); g.ellipse(-12, -60, 2.6, 3.2, 0, 0, 7); g.fill();   // his bony hand round it
+    const hx = lrp(14, 42, pt), hy = lrp(-52, -88, pt);   // the other arm: down at his side, then up, pointing
+    g.strokeStyle = '#141218'; g.lineWidth = 6; g.beginPath(); g.moveTo(10, -84); g.lineTo(hx, hy); g.stroke();
+    g.strokeStyle = '#e6e2d6'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx + lrp(1, 12, pt), hy + lrp(7, -1.5, pt)); g.stroke();
+    g.restore();
+  }
+  // A skeleton walking along with the zombies (Forest): bones swinging, jaw chattering; (x, y) is at its feet.
+  function drawSkeleton(c, x, y, k, dir, ph, z, dim) {
+    const bone = `rgb(${mix([233, 230, 220], [16, 14, 30], dim * .7)})`, sw = Math.sin(ph), bob = Math.abs(Math.cos(ph)) * 1.5;
+    c.save(); c.translate(x, y - bob * k); c.scale(dir * k, k); c.lineCap = c.lineJoin = 'round'; c.strokeStyle = c.fillStyle = bone;
+    c.lineWidth = 2.4; c.beginPath();
+    for (const s of [1, -1]) { c.moveTo(0, -26); c.lineTo(s * sw * 5 + 1, -13); c.lineTo(s * sw * 7 + 2, 0); c.lineTo(s * sw * 7 + 6, 0); }   // legs and feet
+    c.moveTo(0, -26); c.lineTo(1, -44);   // backbone
+    for (const s of [1, -1]) { c.moveTo(1, -42); c.lineTo(-s * sw * 5 + 1, -33); c.lineTo(-s * sw * 7 + 3, -25); }   // arms swinging
+    c.stroke();
+    c.lineWidth = 1.6; c.beginPath(); for (const ry of [-40, -36.5, -33]) { c.moveTo(-4, ry + 1); c.quadraticCurveTo(1, ry - 2, 6, ry + 1); } c.stroke();   // ribs
+    c.beginPath(); c.ellipse(1, -26, 4, 2, 0, 0, 7); c.fill();   // hips
+    c.beginPath(); c.arc(2, -50, 5.6, 0, 7); c.fill();   // skull
+    c.fillRect(0, -46 + Math.abs(Math.sin(ph * 2)) * 1.5, 6, 2.6);   // chattering jaw
+    c.fillStyle = '#121214'; c.beginPath(); c.ellipse(4, -51, 1.5, 1.8, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(6.4, -48.5); c.lineTo(7.2, -47); c.lineTo(5.6, -47); c.fill();
+    c.restore();
+  }
 
   /* ---------- Random events ---------- */
   // Major random events happen one at a time and never while the fisherman is thinking: the biplane, the giant, the
@@ -3588,7 +3732,7 @@ const Sky = (() => {
   const flyOK = () => !BAD_SKY.includes(mode.kind);
   const forced = (location.search.match(/[?&]event=(\w+)/) || [])[1] || (/[?&]plane\b/.test(location.search) ? 'biplane' : '');
   const stage = { ev: null, next: performance.now() / 1000 + (forced || SHOWCASE ? 2 : 30), last: '', lastOther: '', first: true };
-  const MAJORS = ['biplane', 'giant', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger', 'werewolf', 'batcloud', 'trickortreat'];   // (bigfoot to ranger: Forest style; the last three: Halloween)
+  const MAJORS = ['biplane', 'giant', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger', 'werewolf', 'batcloud', 'trickortreat', 'reaper'];   // (bigfoot to ranger: Forest style; the last three: Halloween)
   const saluting = () => !!(stage.ev && stage.ev.kind === 'eagle' && sea && (sea.pose === 'fish' || sea.pose === 'mug'));
   const ease = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
   const randFish = () => FISH[Math.floor(Math.random() * FISH.length)];
@@ -3604,6 +3748,7 @@ const Sky = (() => {
       case 'nessie': return !!sea && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bigfoot': return !!forest && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bear': case 'raccoon': case 'skunk': case 'ranger': return !!forest && !forest.inside;   // he has to be out by the fire
+      case 'reaper': return !!hallo && !!(sea ? (sea.pose === 'fish' || sea.pose === 'mug') : forest && !forest.inside);   // Halloween: he has to be out to be pointed at
       case 'trickortreat': return !!hallo && (sea ? (sea.pose === 'fish' || sea.pose === 'mug') && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind) : !!forest && !forest.inside);
       case 'werewolf': case 'batcloud': return !!hallo && !!(sea ? (sea.pose === 'fish' || sea.pose === 'mug') : forest && !forest.inside) && (kind === 'werewolf' ? !!hallo.moonAt : flyOK());   // Halloween: the werewolf needs the moon out
     }
@@ -3625,6 +3770,7 @@ const Sky = (() => {
     else if (kind === 'werewolf') { e.dur = 15; e.say = '…Did I just howl?'; }
     else if (kind === 'batcloud') { e.dur = 16; e.say = "I've got a bat breath problem."; }
     else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Swedish Fish are my favorite!' : "Nothing beats Halloween s'mores!"; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
+    else if (kind === 'reaper') { e.dur = 16; e.say = sea ? 'Not today! The fish are biting!' : 'Was he pointing at ME?!'; }
     return e;
   }
   function eventsTick(t) {
@@ -3653,7 +3799,7 @@ const Sky = (() => {
     }
     if (!kind || !MAJORS.includes(kind) || !eligible(kind)) {
       const pool = MAJORS.filter(k => k !== 'biplane' && k !== stage.lastOther && eligible(k));
-      const spooky = pool.filter(k => k === 'werewolf' || k === 'batcloud' || k === 'trickortreat');   // (on Halloween, half the in-between events are spooky ones)
+      const spooky = pool.filter(k => k === 'werewolf' || k === 'batcloud' || k === 'trickortreat' || k === 'reaper');   // (on Halloween, half the in-between events are spooky ones)
       if (spooky.length && Math.random() < .5) pool.splice(0, pool.length, ...spooky);
       // (only if nothing else can happen in this weather does the last one repeat)
       kind = pool[Math.floor(Math.random() * pool.length)] || (eligible(stage.lastOther) ? stage.lastOther : '') || (eligible('biplane') ? 'biplane' : '');
