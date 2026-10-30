@@ -3077,7 +3077,8 @@ const Sky = (() => {
       if (w.t > w.dur) { h.witch = null; N.witch = gap(90, 200); }
     } else if (flyOK() && !stage.ev && t > N.witch) {
       const dir = Math.random() < .5 ? 1 : -1, v = 175 * Math.max(.6, Math.min(sx, 1.3)), moon = h.moonAt;
-      h.witch = { t: 0, dur: (Wd + 340 * sx) / v, dir, v, slope: rnd(-.08, .08), react: Math.random() < .6,
+      h.witch = { t: 0, dur: (Wd + 340 * sx + 460 * Math.max(.6, Math.min(sy, Wd / 900)) * 1.2) / v, dir, v,   // (long enough for her banner to fly off too)
+        slope: rnd(-.08, .08), react: Math.random() < .6,
         mx: moon ? moon[0] : Wd * rnd(.25, .45), my: moon ? moon[1] + rnd(-.012, .012) * Hd : Hd * rnd(.1, .28) };
     }
     // zombies shuffling past: along the far edge of the clearing in the Forest, along the bottom in the Sky style
@@ -3142,6 +3143,22 @@ const Sky = (() => {
     }
     if (h.witch) drawWitch(t);
   }
+  // The witch's banner: orange cloth with black edges and "Happy Halloween" in purple, drawn once per size and light.
+  const wbCv = document.createElement('canvas');
+  let wbKey = '';
+  function witchBanner(k) {
+    const key = [k, mode.tod].join('|');
+    if (key === wbKey) return wbCv;
+    wbKey = key;
+    const H = Math.round(32 * k), font = `800 ${Math.round(19 * k)}px "Segoe UI", Inter, Roboto, Arial, sans-serif`, x = wbCv.getContext('2d'), text = 'Happy Halloween';
+    x.font = font; const W = Math.round(x.measureText(text).width + 34 * k);
+    wbCv.width = W; wbCv.height = H;
+    x.fillStyle = '#f08a24'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#1a1420'; x.fillRect(0, 0, W, 3 * k); x.fillRect(0, H - 3 * k, W, 3 * k);
+    x.font = font; x.fillStyle = '#3d1a5a'; x.textBaseline = 'middle'; x.fillText(text, 17 * k, H / 2 + k);
+    if (mode.tod !== 'day') { x.globalCompositeOperation = 'source-atop'; x.fillStyle = mode.tod === 'night' ? 'rgba(20,20,50,.3)' : 'rgba(120,60,50,.2)'; x.fillRect(0, 0, W, H); }
+    return wbCv;
+  }
   // The witch on her broom, facing the way she flies: pointed hat, cape and hair streaming back, her black cat riding on
   // the end of the broom. A silhouette in the evening and at night; by day you can see her green face and purple cape.
   function drawWitch(t) {
@@ -3151,6 +3168,15 @@ const Sky = (() => {
     const P = dark ? { dress: sil, cape: sil, skin: sil, hat: sil, band: sil, hair: sil, stick: sil, straw: sil, cat: sil, boot: sil }
       : { dress: '#2a1d3a', cape: '#4a2266', skin: '#8fc26a', hat: '#1f1828', band: '#e8771e', hair: '#1a1a1a', stick: '#7a5a32', straw: '#c9a050', cat: '#121214', boot: '#121214' };
     const fl = Math.sin(t * 9), fl2 = Math.sin(t * 9 + 1.3);   // the cape and hair flapping
+    // her "Happy Halloween" banner, towed from the end of the broom and rippling like the biplane's
+    const img = witchBanner(k), ax = x - w.dir * 60 * k, ay = y + 2 * k, bx = w.dir > 0 ? ax - 22 * k - img.width : ax + 22 * k, slice = Math.max(4, Math.round(6 * k));
+    for (let sx2 = 0; sx2 < img.width; sx2 += slice) {
+      const u = w.dir > 0 ? 1 - sx2 / img.width : sx2 / img.width;   // (0 at the end nearest her)
+      g.drawImage(img, sx2, 0, slice, img.height, bx + sx2, ay - img.height / 2 + 2.5 * k * Math.sin(t * 4 - u * 7) * (.3 + u), slice + .6, img.height);
+    }
+    g.strokeStyle = dark ? 'rgba(20,16,24,.8)' : 'rgba(40,40,40,.6)'; g.lineWidth = Math.max(1, k);
+    const ex = w.dir > 0 ? bx + img.width : bx;
+    g.beginPath(); g.moveTo(ax, ay); g.lineTo(ex, ay - img.height / 2 + 3 * k); g.moveTo(ax, ay); g.lineTo(ex, ay + img.height / 2 - 3 * k); g.stroke();
     g.save(); g.translate(x, y); g.scale(w.dir * k, k); g.rotate(-.05 + Math.sin(t * 2.2 + 1) * .04); g.lineCap = g.lineJoin = 'round';
     if (dark) { g.shadowColor = hallo.night ? 'rgba(255,160,80,.55)' : 'rgba(255,190,140,.4)'; g.shadowBlur = 5 * k; }   // a faint glowing edge
     g.fillStyle = P.straw; g.beginPath(); g.moveTo(-34, -2); g.lineTo(-58, -9); g.quadraticCurveTo(-63, 2, -58, 12); g.lineTo(-34, 5); g.closePath(); g.fill();   // bristles
@@ -3341,7 +3367,7 @@ const Sky = (() => {
   // ----- Halloween major random events (Ocean and Forest): the werewolf and the cloud of bats -----
   // Werewolf: he looks up at the moon, shakes, turns into a werewolf, howls at the moon, and shakes back into himself
   // ("…Did I just howl?"). Only while the moon is out. Cloud of bats: bats swirl round him, he vanishes into them, and
-  // they fly off into the sky; a little later they fly back, swirl, and there he is again ("Sorry, I had to fly.").
+  // they fly off into the sky; a little later they fly back, swirl, and there he is again ("I've got a bat breath problem.").
   // ?event=werewolf or ?event=batcloud (with ?holiday=halloween) starts one in a couple of seconds.
   const ramp = (p, a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
   function wolfState(manX) {   // how far he's turned (k 0-1), shaking, howling, and which side the moon is on
@@ -3587,7 +3613,7 @@ const Sky = (() => {
     else if (kind === 'skunk') { e.dur = 16; e.say = 'Phew. That was close.'; }
     else if (kind === 'ranger') e.dur = 18;
     else if (kind === 'werewolf') { e.dur = 15; e.say = '…Did I just howl?'; }
-    else if (kind === 'batcloud') { e.dur = 16; e.say = 'Sorry, I had to fly.'; }
+    else if (kind === 'batcloud') { e.dur = 16; e.say = "I've got a bat breath problem."; }
     else if (kind === 'trickortreat') { e.dur = 22; e.say = sea ? 'Save me a red one!' : 'Happy Halloween, kids!'; e.kids = [...KID_COSTUMES].sort(() => Math.random() - .5).slice(0, 3).map(c => ({ c, s: rnd(.88, 1.05) })); }
     return e;
   }
