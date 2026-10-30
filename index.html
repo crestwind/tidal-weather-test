@@ -4618,7 +4618,7 @@ function applyScene() {
     else if (windyNow() && ['clear', 'partly', 'cloudy', 'fog'].includes(kind)) kind = 'windy';   // rain/snow scenes win over wind
   }
   let tod = S.tod;
-  if (tod === 'auto' && Sky.holidayNow() === 'halloween') tod = 'night';   // Halloween is always night, with the moon out
+  if (Sky.holidayNow() === 'halloween') tod = 'night';   // Halloween is always night, with the moon out (even the time-of-day previews)
   if (tod === 'auto') {
     if (!W) { const h = new Date().getHours(); tod = h >= 7 && h < 19 ? 'day' : 'night'; }
     else {
