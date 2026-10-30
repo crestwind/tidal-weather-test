@@ -2140,7 +2140,7 @@ const Sky = (() => {
       if (r.x > r.end) r.t = r.dur + 1;
     }
     run('squirrel', calm && !f.night, 90, 240, () => ({ dur: 10 }));
-    run('owl', calm && f.night, 120, 240, () => ({ dur: 13 }));
+    run('owl', calm && f.night && !hallo, 120, 240, () => ({ dur: 13 }));
     const month = new Date().getMonth(), warm = !W || (imp() ? W.current.temperature_2m : W.current.temperature_2m * 9 / 5 + 32) >= 58;
     // (on the test site and with ?fireflies they come any time of year, so they can be seen)
     run('flies', calm && (f.night || f.golden) && (f.fliesAnyTime || month >= 4 && month <= 8 && warm), 120, 240, () => ({ dur: 45,
@@ -3082,7 +3082,7 @@ const Sky = (() => {
         mx: moon ? moon[0] : Wd * rnd(.25, .45), my: moon ? moon[1] + rnd(-.012, .012) * Hd : Hd * rnd(.1, .28) };
     }
     // zombies shuffling past: along the far edge of the clearing in the Forest, along the bottom in the Sky style
-    if (forest || !(sea || tropic)) {
+    if (forest) {   // (not in the Sky style any more: they looked silly walking on the air)
       const Z = h.zombies;
       if (Z) {
         for (const z of Z.list) { z.x += Z.dir * z.v * dt; z.ph += z.v / Z.k * dt * .16; }
@@ -3590,7 +3590,7 @@ const Sky = (() => {
       case 'giant': return false;   // switched off until he's redesigned (his code is kept below)
       case 'mermaid': return fishing;
       case 'ufo': return flyOK() && fishing;
-      case 'eagle': return !!sea && flyOK();
+      case 'eagle': return !!sea && flyOK() && !hallo;   // (no birds on Halloween)
       case 'nessie': return !!sea && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bigfoot': return !!forest && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
       case 'bear': case 'raccoon': case 'skunk': case 'ranger': return !!forest && !forest.inside;   // he has to be out by the fire
@@ -4271,7 +4271,8 @@ const Sky = (() => {
     }
     flakes = []; for (let i = 0; i < Math.round((sc.snow || 0) * k * area); i++) { const r = rnd(1.2, 3.8) * sy * (sc.size || 1); flakes.push({ x: rnd(0, Wd), y: rnd(0, Hd), r, v: (20 + r * 18) * sy * (sc.fall || 1), ph: rnd(0, 6.3) }); }
     meteor = null; nextMeteor = performance.now() / 1000 + rnd(6, 25);
-    birds = !BAD_SKY.includes(kind) && S.display !== 'forest'; flock = [];   // a flying random event: any weather but high wind and bad storms (the Forest has its own birds)
+    birds = !BAD_SKY.includes(kind) && S.display !== 'forest' && holidayNow() !== 'halloween'; flock = [];   // (no birds on Halloween, just bats)
+      // a flying random event: any weather but high wind and bad storms (the Forest has its own birds)
     nextFlock = performance.now() / 1000 + rnd(4, 12);   // first gulls soon after the scene starts
     stars = []; if (night && (kind === 'clear' || kind === 'partly' || kind === 'windy')) for (let i = 0; i < 170 * area; i++) stars.push({ x: rnd(0, Wd), y: rnd(0, .75) * Hd, r: rnd(.6, 1.9), ph: rnd(0, 6.3), sp: rnd(.4, 1.8) });
     fogs = [];
