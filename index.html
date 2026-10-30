@@ -1125,7 +1125,7 @@ const Sky = (() => {
     x.translate(o, o);
     x.strokeStyle = 'rgba(255,255,255,.95)'; x.lineCap = 'round'; x.shadowColor = '#fff'; x.shadowBlur = 3;
     const len = R * (.8 + v * .07), br = [[.4, .24 + v * .05], [.68, .17 + v * .04]];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       x.save(); x.rotate(i * Math.PI / 3);
       x.lineWidth = 2.6; x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -len); x.stroke();
       x.lineWidth = 1.8;
@@ -2812,7 +2812,7 @@ const Sky = (() => {
     x.strokeStyle = P.isl; x.lineWidth = 2.2 * sy; x.lineCap = 'round';
     for (const [px, h, lean] of [[ix - 18 * sx, 34, -5], [ix + 6 * sx, 42, 6]]) {
       x.beginPath(); x.moveTo(px, b.top - ih * .9); x.quadraticCurveTo(px + lean * .3 * sx, b.top - h * .6 * sy, px + lean * sx, b.top - h * sy); x.stroke();
-      for (let i = 0; i < 6; i++) { const a = Math.PI * (1.05 + i * .18); x.beginPath(); x.moveTo(px + lean * sx, b.top - h * sy); x.quadraticCurveTo(px + lean * sx + Math.cos(a) * 9 * sx, b.top - h * sy + Math.sin(a) * 8 * sy - 3 * sy, px + lean * sx + Math.cos(a) * 15 * sx, b.top - h * sy + Math.sin(a) * 5 * sy + 4 * sy); x.stroke(); }
+      for (let i = 0; i < 7; i++) { const a = Math.PI * (1.05 + i * .18); x.beginPath(); x.moveTo(px + lean * sx, b.top - h * sy); x.quadraticCurveTo(px + lean * sx + Math.cos(a) * 9 * sx, b.top - h * sy + Math.sin(a) * 8 * sy - 3 * sy, px + lean * sx + Math.cos(a) * 15 * sx, b.top - h * sy + Math.sin(a) * 5 * sy + 4 * sy); x.stroke(); }
     }
     // the beach: a gently curving shoreline, a band of wet sand, then dry sand
     const edge = px => b.shore + Math.sin(px * .0045 / sx) * 9 * sy + Math.sin(px * .011 / sx + 1) * 4 * sy;
@@ -3554,7 +3554,7 @@ const Sky = (() => {
     g.fillStyle = skin; g.beginPath(); g.ellipse(R * .95, R * .05, R * .14, R * .22, 0, 0, 7); g.fill();                    // ear
     g.beginPath(); g.ellipse(0, 0, R, R * 1.12, 0, 0, 7); g.fill();                                                           // head
     g.fillStyle = hair; g.beginPath(); g.ellipse(-R * .1, -R * .78, R * .95, R * .45, -.15, Math.PI * .95, Math.PI * 2.1); g.fill();   // hair
-    for (let i = 0; i < 6; i++) { const a = -2.6 + i * .32; g.beginPath(); g.arc(Math.cos(a) * R * .9, Math.sin(a) * R * 1.0, R * .16, 0, 7); g.fill(); }   // messy tufts
+    for (let i = 0; i < 7; i++) { const a = -2.6 + i * .32; g.beginPath(); g.arc(Math.cos(a) * R * .9, Math.sin(a) * R * 1.0, R * .16, 0, 7); g.fill(); }   // messy tufts
     g.strokeStyle = hair; g.lineWidth = R * .07; g.lineCap = 'round';
     for (const [ex, raise] of [[.25, .05], [.66, .1]]) { g.beginPath(); g.moveTo(R * (ex - .14), -R * (.42 + raise)); g.quadraticCurveTo(R * ex, -R * (.55 + raise), R * (ex + .14), -R * (.44 + raise)); g.stroke(); }   // eyebrows, raised
     for (const [ex, er] of [[.25, .16], [.66, .14]]) {
@@ -3990,7 +3990,7 @@ const Sky = (() => {
     if (d.t > down + .6) {   // bubbles popping up after him
       const a = d.t - down - .6;
       g.fillStyle = `rgba(255,255,255,${.7 * Math.max(0, 1 - a / 1.9)})`;
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 7; i++) {
         const s = (a * 1.8 + i * .37) % 1;
         g.beginPath(); g.arc(d.x + Math.sin(i * 2.3 + t * 3) * 9 * k, wy - s * 5 * k, (1 + s * 1.6) * k, 0, 7); g.fill();
       }
@@ -4110,10 +4110,21 @@ const Sky = (() => {
     forest = buildForest();
     tropic = buildTropic();
     hallo = buildHalloween();
-    if (hallo && (kind === 'clear' || kind === 'partly' || kind === 'windy')) {   // Halloween's big orange moon, out day and night
+    if (hallo && (kind === 'clear' || kind === 'partly' || kind === 'windy' || kind === 'cloudy' || kind === 'fog')) {   // Halloween's big orange moon (peeking through cloud and fog too)
       if (night) orb = { img: harvestMoonSprite(), x: Wd * .42, y: Hd * .18 };
-      else hallo.moon = { img: harvestMoonSprite(), x: Wd * .27, y: Hd * .2 };   // (by day, left of the sun)
+      else hallo.moon = { img: harvestMoonSprite(), x: Wd * .27, y: Hd * .2 };   // (only with Preview: day; left of the sun)
       hallo.moonAt = night ? [orb.x, orb.y] : [hallo.moon.x, hallo.moon.y];
+    }
+    if (hallo && !sc.fog) {   // Halloween: a light spooky mist, much thinner than the fog scene and low to the ground
+      for (let i = 0; i < 7; i++) {
+        const s = rnd(1.2, 2.4) * sx;
+        fogs.push({ x: rnd(-900 * s, Wd), y: rnd(.5, 1.05) * Hd, s, v: rnd(5, 12) * sx * (Math.random() < .3 ? -1 : 1), a: rnd(.3, .5) });
+      }
+      if (!veil) {
+        const col = night ? '90,98,110' : '226,230,234';
+        veil = g.createLinearGradient(0, 0, 0, Hd);
+        veil.addColorStop(0, `rgba(${col},0)`); veil.addColorStop(.55, `rgba(${col},.07)`); veil.addColorStop(1, `rgba(${col},.18)`);
+      }
     }
     tornado = buildTornado();
   }
@@ -4381,7 +4392,7 @@ const Sky = (() => {
     Wd = cv.width = gc.width = w; Hd = cv.height = gc.height = h;
     if (mode.kind) set(mode.kind, mode.tod);
   }
-  return { set, resize };
+  return { set, resize, holidayNow };
 })();
 
 function isDayNow() {
@@ -4420,6 +4431,7 @@ function applyScene() {
     else if (windyNow() && ['clear', 'partly', 'cloudy', 'fog'].includes(kind)) kind = 'windy';   // rain/snow scenes win over wind
   }
   let tod = S.tod;
+  if (tod === 'auto' && Sky.holidayNow() === 'halloween') tod = 'night';   // Halloween is always night, with the moon out
   if (tod === 'auto') {
     if (!W) { const h = new Date().getHours(); tod = h >= 7 && h < 19 ? 'day' : 'night'; }
     else {
