@@ -4298,7 +4298,7 @@ const Sky = (() => {
     forest = buildForest();
     tropic = buildTropic();
     hallo = buildHalloween();
-    if (hallo && (kind === 'clear' || kind === 'partly' || kind === 'windy' || kind === 'cloudy' || kind === 'fog')) {   // Halloween's big orange moon (peeking through cloud and fog too)
+    if (hallo) {   // Halloween's big orange moon, in every weather (peeking through the clouds, rain and storms)
       if (night) orb = { img: harvestMoonSprite(), x: Wd * .42, y: Hd * .18 };
       else hallo.moon = { img: harvestMoonSprite(), x: Wd * .27, y: Hd * .2 };   // (only with Preview: day; left of the sun)
       hallo.moonAt = night ? [orb.x, orb.y] : [hallo.moon.x, hallo.moon.y];
