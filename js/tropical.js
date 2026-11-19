@@ -151,33 +151,75 @@ function drawHammock(b, t) {
   }
   g.restore();
 }
-// him, lying back in the hammock: head on the left end, sunglasses, Hawaiian shirt, shorts, bare feet over the end,
-// and a coconut drink on his belly that he lifts for a sip now and then
+// him, lying back in the hammock, built like the fisherman and the camper (rounded limbs, no outlines, his far side a
+// little darker): head on the left end, one arm tucked behind it, sunglasses; a Hawaiian shirt and shorts following the
+// sag of the hammock; knees up and bare feet over the end; a coconut drink on his belly that he lifts for a sip now
+// and then. P(u): the hammock's curve, u 0 (left end) to 1 (right end).
 function drawLounger(b, t, P) {
-  const C = b.C, s = b.s, [hx, hy] = P(.2), [cx, cy] = P(.42), [kx, ky] = P(.7), [fx, fy] = P(.86);
+  const C = b.C, s = b.s;
+  const Q = (u, lift) => { const [x, y] = P(u); return [x, y - lift * s]; };   // a point on the cloth, raised by lift
+  const head = Q(.17, 26), sh = Q(.25, 17), hip = Q(.5, 12), knee = Q(.67, 33), ank = Q(.84, 14);
+  const far = f => { g.save(); g.filter = 'brightness(.74)'; f(); g.restore(); };
+  const limb = (col, w, ...pts) => { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(...pts[0]); if (pts.length === 3) g.quadraticCurveTo(...pts[1], ...pts[2]); else g.lineTo(...pts[1]); g.stroke(); };
   g.save(); g.lineCap = g.lineJoin = 'round';
-  for (const [col, w] of [[C.outline, 8], [C.skin, 6]]) { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(kx, ky - 12 * s); g.lineTo(fx + 4 * s, fy - 16 * s); g.stroke(); }   // legs (outlined)
-  g.fillStyle = C.skin; g.beginPath(); g.ellipse(fx + 8 * s, fy - 19 * s, 3.5 * s, 5 * s, -.3, 0, 7); g.fill();                         // feet
-  g.fillStyle = C.shorts; g.beginPath(); g.ellipse(lrp(cx, kx, .6), lrp(cy, ky, .6) - 10 * s, 15 * s, 8 * s, .1, 0, 7); g.fill(); g.strokeStyle = C.outline; g.lineWidth = 1.3 * s; g.stroke();
-  g.fillStyle = C.shirt; g.beginPath(); g.ellipse(lrp(hx, kx, .38), lrp(hy, ky, .38) - 11 * s, 26 * s, 10 * s, .08, 0, 7); g.fill(); g.stroke();   // (a thin dark outline so he stands out from the hammock)
-  [[.22, -4], [.3, 3], [.4, -1], [.48, -6], [.52, 3], [.34, -7]].forEach(([u, o], i) => { const px = lrp(hx, kx, u), py = lrp(hy, ky, u) - 11 * s + o * s; g.fillStyle = i % 2 ? C.flower2 : C.flower; g.beginPath(); g.arc(px, py, 2 * s, 0, 7); g.fill(); });   // hibiscus print
-  // his drink: resting on his belly, or lifted to his mouth
+  // his far leg and his far arm (behind his head), a shade darker
+  far(() => {
+    const k2 = [knee[0] - 4 * s, knee[1] - 3 * s], a2 = [ank[0] + 2 * s, ank[1] - 4 * s];
+    limb(C.skin, 6.5, [hip[0], hip[1] - 2 * s], k2); limb(C.skin, 6, k2, a2);
+    g.fillStyle = C.skin; g.beginPath(); g.ellipse(a2[0] + 4 * s, a2[1] - 2 * s, 5 * s, 2.6 * s, -.5, 0, 7); g.fill();   // foot
+    const el = [head[0] - 12 * s, head[1] - 12 * s];   // elbow up beside his head, hand tucked behind it
+    limb(C.shirt, 6.5, [sh[0] - 2 * s, sh[1] - 4 * s], [lrp(sh[0], el[0], .45), lrp(sh[1], el[1], .45)]);   // sleeve
+    limb(C.skin, 5, [lrp(sh[0], el[0], .4), lrp(sh[1], el[1], .4)], el); limb(C.skin, 5, el, [head[0] - 3 * s, head[1] - 2 * s]);
+  });
+  // the shirt: a body-shaped band along the hammock's curve from his shoulders to his hips, with a flower print
+  const mid = Q(.37, 11), body = new Path2D(), N = 12, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, x = (1 - u) * (1 - u) * sh[0] + 2 * u * (1 - u) * mid[0] + u * u * hip[0], y = (1 - u) * (1 - u) * sh[1] + 2 * u * (1 - u) * mid[1] + u * u * hip[1];
+    const dx = 2 * (1 - u) * (mid[0] - sh[0]) + 2 * u * (hip[0] - mid[0]), dy = 2 * (1 - u) * (mid[1] - sh[1]) + 2 * u * (hip[1] - mid[1]), l = Math.hypot(dx, dy) || 1;
+    pts.push([x, y, -dy / l, dx / l, lrp(10.5, 9.5, u) * s + Math.sin(Math.PI * u) * 1.5 * s]);   // (a little belly in the middle)
+  }
+  pts.forEach(([x, y, nx, ny, w], i) => i ? body.lineTo(x + nx * w, y + ny * w) : body.moveTo(x + nx * w, y + ny * w));
+  for (let i = N; i >= 0; i--) { const [x, y, nx, ny, w] = pts[i]; body.lineTo(x - nx * w, y - ny * w); }
+  body.closePath();
+  // his shorts, from his hips down his thighs (under the shirt's hem)
+  const th = [lrp(hip[0], knee[0], .55), lrp(hip[1], knee[1], .55)];
+  limb(C.shorts, 15, [hip[0] - 3 * s, hip[1]], th);
+  g.fillStyle = C.shirt; g.fill(body);
+  g.save(); g.clip(body);   // the print: scattered hibiscus flowers
+  for (let i = 0; i < 16; i++) {
+    const u = (i * .37) % 1, v = ((i * .61) % 1) * 2 - 1, p = pts[Math.round(u * N)], fx = p[0] + p[2] * p[4] * v * .8, fy = p[1] + p[3] * p[4] * v * .8;
+    g.fillStyle = i % 3 ? C.flower : C.flower2;
+    for (let j = 0; j < 5; j++) { const a = j / 5 * 6.283 + i; g.beginPath(); g.arc(fx + Math.cos(a) * 1.6 * s, fy + Math.sin(a) * 1.6 * s, 1.1 * s, 0, 7); g.fill(); }
+    g.fillStyle = C.flower2; g.beginPath(); g.arc(fx, fy, .7 * s, 0, 7); g.fill();
+  }
+  g.restore();
+  // his near leg: thigh up to the knee, shin down to his bare foot hanging over the end
+  limb(C.skin, 7, th, knee); limb(C.skin, 6.5, knee, ank);
+  limb(C.shorts, 13, [lrp(hip[0], th[0], .5), lrp(hip[1], th[1], .5)], th);   // (the shorts' leg over the top of his thigh)
+  g.fillStyle = C.skin; g.beginPath(); g.ellipse(ank[0] + 5 * s, ank[1] - 1.5 * s, 5.5 * s, 2.8 * s, -.45, 0, 7); g.fill();   // foot
+  // neck, an open collar, and his head resting back against the hammock end
+  limb(C.skin, 6, sh, [head[0] + 2 * s, head[1] + 5 * s]);
+  g.fillStyle = C.skin; g.beginPath(); g.moveTo(sh[0] - 1 * s, sh[1] - 6 * s); g.lineTo(sh[0] + 7 * s, sh[1] - 2 * s); g.lineTo(sh[0] + 1 * s, sh[1] + 2 * s); g.closePath(); g.fill();   // the V of his open collar
+  g.fillStyle = C.flower; g.beginPath(); g.moveTo(sh[0] - 1 * s, sh[1] - 6 * s); g.lineTo(sh[0] + 4 * s, sh[1] - 8 * s); g.lineTo(sh[0] + 3 * s, sh[1] - 3 * s); g.closePath(); g.fill();   // collar flap
+  b.headAt = head;   // (for his speech bubble)
+  g.save(); g.translate(...head); g.rotate(-.18); g.scale(s, s); drawBeachHead(b, t, .45, 1); g.restore();
+  // his near arm and his drink: resting on his belly, or lifted to his mouth for a sip
   const p = b.sip, up = p.st === 'sip' ? (p.t < .7 ? ease(p.t / .7) : p.t < 1.9 ? 1 : 1 - ease((p.t - 1.9) / .7)) : 0;
-  const rest = [lrp(hx, kx, .42), lrp(hy, ky, .42) - 22 * s], mouth = [hx + 12 * s, hy - 24 * s], dk = [lrp(rest[0], mouth[0], up), lrp(rest[1], mouth[1], up)];
-  g.strokeStyle = C.skin; g.lineWidth = 4.5 * s; g.beginPath(); g.moveTo(lrp(hx, kx, .22), lrp(hy, ky, .22) - 12 * s); g.quadraticCurveTo(dk[0] - 6 * s, dk[1] + 10 * s, dk[0] - 3 * s, dk[1] + 3 * s); g.stroke();
+  const rest = Q(.4, 22), mouth = [head[0] + 9 * s, head[1] + 3 * s], dk = [lrp(rest[0], mouth[0], up), lrp(rest[1], mouth[1], up)];
+  const shN = [sh[0] + 3 * s, sh[1] + 2 * s], elb = [lrp(sh[0], dk[0], .5) - 2 * s + up * 4 * s, Math.max(sh[1], dk[1]) + 6 * s - up * 4 * s];
+  limb(C.shirt, 7, shN, [lrp(shN[0], elb[0], .5), lrp(shN[1], elb[1], .5)]);   // short sleeve
+  limb(C.skin, 5, [lrp(shN[0], elb[0], .45), lrp(shN[1], elb[1], .45)], elb); limb(C.skin, 5, elb, [dk[0] - 4 * s, dk[1] + 3 * s]);
   g.fillStyle = C.coco; g.beginPath(); g.arc(dk[0], dk[1], 6 * s, 0, 7); g.fill();
   g.fillStyle = C.cocoIn; g.beginPath(); g.ellipse(dk[0], dk[1] - 4 * s, 4.6 * s, 1.6 * s, 0, 0, 7); g.fill();
   g.strokeStyle = C.straw; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(dk[0] + 1 * s, dk[1] - 4 * s); g.lineTo(dk[0] - 4 * s, dk[1] - 13 * s); g.stroke();
   g.fillStyle = C.parasol; g.beginPath(); g.moveTo(dk[0] + 3 * s, dk[1] - 4 * s); g.lineTo(dk[0] + 7 * s, dk[1] - 14 * s); g.lineTo(dk[0] + 12 * s, dk[1] - 9 * s); g.closePath(); g.fill();   // little paper umbrella
-  // his head, resting back on the hammock end
-  b.headAt = [hx - 2 * s, hy - 19 * s];   // (for his speech bubble)
-  g.translate(hx - 2 * s, hy - 19 * s); g.scale(s, s); drawBeachHead(b, t, .45, 1);
+  g.fillStyle = C.skin; g.beginPath(); g.arc(dk[0] - 4 * s, dk[1] + 3 * s, 2.8 * s, 0, 7); g.fill();   // his hand round the coconut
   g.restore();
 }
 function drawBeachHead(b, t, look, k) {   // tanned, messy dark hair, sunglasses, a big grin
   const C = b.C; g.save(); g.scale(k, k);
   g.fillStyle = C.hair; g.beginPath(); g.arc(0, -1, 9.8, Math.PI * .9, Math.PI * 2.1); g.fill();
-  g.fillStyle = C.skin; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill(); g.strokeStyle = C.outline; g.lineWidth = 1; g.globalAlpha = .6; g.stroke(); g.globalAlpha = 1;
+  g.fillStyle = C.skin; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
   g.fillStyle = C.hair; for (const a of [-2.6, -2, -1.4, -.8]) { g.beginPath(); g.ellipse(Math.cos(a) * 8, Math.sin(a) * 8 - 1, 3.4, 2.4, a, 0, 7); g.fill(); }   // tousled hair
   const ex = look * 3.5;
   g.fillStyle = C.glasses; g.beginPath(); g.roundRect(ex - 6.5, -3, 5.8, 3.6, 1.4); g.roundRect(ex + .7, -3, 5.8, 3.6, 1.4); g.fill(); g.fillRect(ex - 1, -2.2, 2, 1);   // sunglasses
@@ -200,9 +242,22 @@ function drawHut(b, t) {   // a little thatched beach hut on stilts, its door fa
   if (b.inside && S.motion !== 'off') {   // he sits just inside the doorway, peeking out, now and then sitting back into the shade (not in the still picture)
     const look = Math.max(-1, Math.min(1, Math.sin(t * .45) * 1.2)), back = Math.max(0, Math.sin(t * .17) - .6) / .4;
     g.save(); g.clip(door); g.translate(17, -17 - 3 * back); g.scale(1 - .12 * back, 1 - .12 * back);
-    g.fillStyle = C.shirt; g.beginPath(); g.ellipse(0, 0, 15, 12, 0, Math.PI, 0); g.fill();
-    g.fillStyle = C.flower; for (const [px, py] of [[-7, -5], [3, -8], [8, -3]]) { g.beginPath(); g.arc(px, py, 1.6, 0, 7); g.fill(); }
-    g.translate(0, -21); drawBeachHead(b, t, look, .95);
+    // his shoulders and chest in the Hawaiian shirt (sleeves and forearms resting on his knees, below the door's edge)
+    g.lineCap = g.lineJoin = 'round';
+    const chest = new Path2D('M-13 2 L-14 -9 Q-13 -15 -6 -16 L6 -16 Q13 -15 14 -9 L13 2 Z');
+    g.fillStyle = C.shirt; g.fill(chest);
+    g.save(); g.clip(chest);
+    for (let i = 0; i < 7; i++) {   // the flower print
+      const fx = -11 + ((i * 7.3) % 22), fy = -14 + ((i * 5.1) % 14);
+      g.fillStyle = i % 3 ? C.flower : C.flower2;
+      for (let j = 0; j < 5; j++) { const a = j / 5 * 6.283 + i; g.beginPath(); g.arc(fx + Math.cos(a) * 1.5, fy + Math.sin(a) * 1.5, 1, 0, 7); g.fill(); }
+    }
+    g.restore();
+    g.fillStyle = C.skin; g.beginPath(); g.moveTo(-3.5, -16); g.lineTo(3.5, -16); g.lineTo(0, -9); g.closePath(); g.fill();   // open collar
+    g.strokeStyle = C.skin; g.lineWidth = 4.5; g.beginPath(); g.moveTo(-13, -9); g.lineTo(-15, 2); g.moveTo(13, -9); g.lineTo(15, 2); g.stroke();   // arms
+    g.strokeStyle = C.shirt; g.lineWidth = 6; g.beginPath(); g.moveTo(-12, -13); g.lineTo(-14, -6); g.moveTo(12, -13); g.lineTo(14, -6); g.stroke();   // short sleeves
+    g.strokeStyle = C.skin; g.lineWidth = 5; g.beginPath(); g.moveTo(0, -15); g.lineTo(0, -20); g.stroke();   // neck
+    g.translate(0, -24); drawBeachHead(b, t, look, .95);
     g.restore();
     if (back > 0) { g.save(); g.globalAlpha = .85 * back; g.fillStyle = C.door; g.fill(door); g.restore(); }
   }
