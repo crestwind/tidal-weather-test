@@ -18,7 +18,7 @@ function buildTropic() {
   for (const [k, h] of Object.entries({ trunk: '#a07c55', ring: '#7c5a3a', frond: '#3f9a4a', frondDark: '#2b7438', coconut: '#5a3e22',
     fabric: '#2c4a7a', fabric2: '#f3ead6', rope: '#cdb88c', skin: '#e3a77c', hair: '#3a2716', shirt: '#e2473b', flower: '#fff4d6', flower2: '#ffd84a', outline: '#3a2418',
     shorts: '#1fa59a', glasses: '#141414', wall: '#c99d64', bamboo: '#a37a46', roof: '#d8b468', roofDark: '#a8823e', door: '#3a2614',
-    coco: '#7a5230', cocoIn: '#f4efe4', straw: '#e84a6a', parasol: '#f25a9a', torch: '#6a4a2a', snow: '#f4f7fa' })) C[k] = tc(h);
+    nose: '#d18a62', grin: '#7a3a2a', coco: '#7a5230', cocoIn: '#f4efe4', straw: '#e84a6a', parasol: '#f25a9a', torch: '#6a4a2a', snow: '#f4f7fa' })) C[k] = tc(h);
   const s = Math.min(Hd / 1080, Wd / 700) * (portrait ? 1 : 1.25), ax = Wd * (portrait ? .62 : .345);
   const b = { top: Hd * (portrait ? .55 : .575), shore: Hd * (portrait ? .65 : .655), gy: Hd * (portrait ? .75 : .73), night, golden, kind, C, s, ax,
     inside: !!(sc.rain || sc.storm || sc.wind || sc.swirl || kind === 'heavysnow'), snowy: !!sc.snow,
@@ -221,8 +221,8 @@ function drawBeachHead(b, t, look, k) {   // tanned, messy dark hair, sunglasses
   const ex = look * 3.5;
   g.fillStyle = C.glasses; g.beginPath(); g.roundRect(ex - 6.5, -3, 5.8, 3.6, 1.4); g.roundRect(ex + .7, -3, 5.8, 3.6, 1.4); g.fill(); g.fillRect(ex - 1, -2.2, 2, 1);   // sunglasses
   g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(ex - 5.5, -2.5, 1.6, 1);
-  g.fillStyle = '#d18a62'; g.beginPath(); g.ellipse(ex + look * 2.5, 1.5, 1.6, 1.3, 0, 0, 7); g.fill();                                // nose
-  g.strokeStyle = '#7a3a2a'; g.lineWidth = 1; g.beginPath(); g.arc(ex + look * 1.5, 3.3, 3, .2, Math.PI - .2); g.stroke();        // grin
+  g.fillStyle = C.nose; g.beginPath(); g.ellipse(ex + look * 2.5, 1.5, 1.6, 1.3, 0, 0, 7); g.fill();                                // nose
+  g.strokeStyle = C.grin; g.lineWidth = 1; g.beginPath(); g.arc(ex + look * 1.5, 3.3, 3, .2, Math.PI - .2); g.stroke();        // grin
   g.restore();
 }
 function drawHut(b, t) {   // a little thatched beach hut on stilts, its door facing us
