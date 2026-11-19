@@ -20,7 +20,7 @@ const BAD_SKY = ['windy', 'storm', 'hurricane', 'tornado', 'heavy', 'heavysnow']
 const flyOK = () => !BAD_SKY.includes(mode.kind);
 const forced = (location.search.match(/[?&]event=(\w+)/) || [])[1] || (/[?&]plane\b/.test(location.search) ? 'biplane' : '');
 const stage = { ev: null, next: performance.now() / 1000 + (forced || SHOWCASE ? 2 : 30), last: '', lastOther: '', first: true };
-const MAJORS = ['biplane', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger', 'werewolf', 'batcloud', 'trickortreat', 'reaper', 'turkey', 'football', 'pie', 'nap', 'piethief'];   // (bigfoot to ranger: Forest style; the last three: Halloween)
+const MAJORS = ['biplane', 'mermaid', 'ufo', 'eagle', 'nessie', 'bigfoot', 'bear', 'raccoon', 'skunk', 'ranger', 'werewolf', 'batcloud', 'trickortreat', 'reaper', 'turkey', 'football', 'pie', 'nap', 'piethief', 'coconut', 'gulldrink', 'crab', 'turtle'];   // (bigfoot to ranger: Forest style; the last three: Halloween)
 const saluting = () => !!(stage.ev && stage.ev.kind === 'eagle' && sea && (sea.pose === 'fish' || sea.pose === 'mug'));
 const ease = u => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
 const randFish = () => FISH[Math.floor(Math.random() * FISH.length)];
@@ -40,6 +40,9 @@ function eligible(kind) {
     // falls through
     case 'football': case 'nap': return !!thanks && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind) && (sea ? sea.pose === 'fish' || sea.pose === 'mug' : !!forest && !forest.inside);   // Thanksgiving
     case 'piethief': return !!thanks && !!sea && (sea.pose === 'fish' || sea.pose === 'mug') && flyOK() && (deckPie() || !!tgEv('piethief'));   // (still going once it's taken the pie)   // Thanksgiving, Ocean (the Forest's raccoon steals his pie)
+    case 'coconut': case 'crab': return !!tropic && !tropic.inside;   // Tropical: he has to be out in his hammock
+    case 'gulldrink': return !!tropic && !tropic.inside && flyOK();
+    case 'turtle': return !!tropic && !tropic.inside && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind);
     case 'turkey': return !!thanks && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind) && (sea ? sea.pose === 'fish' || sea.pose === 'mug' : !!forest && !forest.inside);   // Thanksgiving: he has to be out to see it
     case 'reaper': return !!hallo && !!(sea ? (sea.pose === 'fish' || sea.pose === 'mug') : forest && !forest.inside);   // Halloween: he has to be out to be pointed at
     case 'trickortreat': return !!hallo && (sea ? (sea.pose === 'fish' || sea.pose === 'mug') && !['storm', 'hurricane', 'tornado', 'heavy'].includes(mode.kind) : !!forest && !forest.inside);
@@ -66,6 +69,10 @@ function startMajor(kind, t) {
   else if (kind === 'pie') { e.dur = 20; e.say = 'Thank you! You saved Thanksgiving!'; }
   else if (kind === 'nap') { e.dur = 16; e.say = sea ? "Whoa! A bite! …I wasn't sleeping!" : "I wasn't sleeping!"; }
   else if (kind === 'piethief') { e.dur = 14; e.say = 'Hey! That was dessert!'; }
+  else if (kind === 'coconut') { e.dur = 12; e.say = 'Note to self: move the hammock.'; }
+  else if (kind === 'gulldrink') { e.dur = 13; e.say = 'Hey! That was a fresh coconut!'; }
+  else if (kind === 'crab') { e.dur = 15; e.say = 'Who invited the crab?!'; }
+  else if (kind === 'turtle') { e.dur = 20; e.say = 'Safe travels, little buddy!'; }
   else if (kind === 'turkey') { e.dur = sea ? 20 : 24; e.say = sea ? 'Was that turkey rowing a boat?!' : 'Next year, buddy. Next year.'; }
   else if (kind === 'reaper') { e.dur = 16; e.say = sea ? 'Not today! The fish are biting!' : 'Was he pointing at ME?!'; }
   return e;
@@ -80,7 +87,7 @@ function eventsTick(t) {
     if (!over && eligible(e.kind)) return;   // still going (it stops early if the weather turns against it)
     if (e.kind === 'biplane') plane = null;
     // Ocean and Forest styles: the next one in 2½ to 3½ minutes. Sky style (biplane only): the next biplane 5 minutes after this one started.
-    stage.ev = null; stage.last = e.kind; stage.next = SHOWCASE ? t + 3 : sea || forest ? t + rnd(150, 210) : Math.max(t + 30, e.t0 + 300);
+    stage.ev = null; stage.last = e.kind; stage.next = SHOWCASE ? t + 3 : sea || forest || tropic ? t + rnd(150, 210) : Math.max(t + 30, e.t0 + 300);
     if (e.kind !== 'biplane') stage.lastOther = e.kind;
     if (over && e.say && (sea || forest || tropic)) { talk.line = e.say; talk.isCatch = true; talk.start = t; talk.dur = 6; }   // his reaction
     else talk.next = Math.max(talk.next, t + 8);

@@ -83,6 +83,7 @@ function drawTropic(ts) {
   g.save(); g.globalAlpha = b.night ? .12 : .22; g.strokeStyle = '#fff'; g.lineWidth = 1.5 * sy;
   for (let i = 0; i < 14; i++) { const yy = lrp(b.top + 8 * sy, b.shore - 8 * sy, (i * .37) % 1), xx = ((i * 211 + t * (8 + i)) % (Wd + 200)) - 100; g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx + (30 + i * 4) * sy, yy); g.stroke(); }
   g.restore();
+  if (b.boat) drawTropicBoat(b, t);   // a sailboat or catamaran on the horizon
   const amp = (10 + rough * 400) * sy;
   for (const [lag, alpha] of [[0, .9], [1.6, .55]]) {
     const wash = (Math.sin(t * .55 - lag) * .5 + .5) * amp + 6 * sy;
@@ -94,11 +95,18 @@ function drawTropic(ts) {
     for (let px = 0; px <= Wd + 10; px += 12) { const yy = b.edge(px) + wash + Math.sin(px * .02 + t * 1.3 + lag) * 2 * sy; px ? g.lineTo(px, yy) : g.moveTo(px, yy); }
     g.stroke(); g.globalAlpha = 1;
   }
+  if (b.surfer) drawSurfer(b, t);   // a surfer riding a wave in
+  if (b.pelican) drawPelican(b, t);   // a pelican diving for fish
+  const ev = S.motion === 'off' ? null : stage.ev;   // (the major random events, see events.js)
+  if (ev && ev.kind === 'turtle') drawTurtle(b, ev, t);   // up the beach, behind the hut and the hammock
   drawHut(b, t);
   drawHammock(b, t);
+  if (ev && ev.kind === 'crab') drawCrab(b, ev, t);
+  if (ev && ev.kind === 'coconut') drawCoconutFall(b, ev, t);
   if (b.night || b.golden) drawTorches(b, t);
   // a few more palms at the sides, nearer to us
   for (const [u, dy, h, lean, sz, ph] of b.sidePalms) palm(b, t, u * Wd, b.gy + dy * s, h * s, lean * s, ph, sz);
+  if (ev && ev.kind === 'gulldrink') drawGullDrink(b, ev, t);   // (in front of everything)
   if (talk.line) {   // his speech bubble, from his head in the hammock or in the hut door
     const [hx, hy] = b.inside || !b.headAt ? [b.hx + 17 * s, b.gy - 62 * s] : b.headAt;
     drawThought(t, hx, hy - 10 * s);
@@ -134,6 +142,7 @@ function drawHammock(b, t) {
   const C = b.C, s = b.s, gy = b.gy, hh = 92 * s, H = 235 * s;
   const ta = palm(b, t, b.pa, gy, H, -28 * s, 0), tb = palm(b, t, b.pb, gy + 6 * s, H * .96, 30 * s, 1.3);
   const A = ta(hh / H), B = tb(hh / H * 1.04);
+  b.crownA = ta(1);   // (where the coconut falls from)
   const empty = b.inside || S.motion === 'off', swing = Math.sin(t * (empty ? 1.6 : .8)) * (empty ? 9 + b.wind * 200 : 4) * s, sag = 42 * s;
   // the hammock: a striped cloth hanging in a curve between two rope ends
   const end = [lrp(A[0], B[0], .12), lrp(A[1], B[1], .12) + 12 * s], end2 = [lrp(A[0], B[0], .88), lrp(A[1], B[1], .88) + 12 * s];
@@ -162,7 +171,7 @@ function drawHammock(b, t) {
 function drawLounger(b, t, P) {
   const C = b.C, s = b.s;
   const Q = (u, lift) => { const [x, y] = P(u); return [x, y - lift * s]; };   // a point on the cloth, raised by lift
-  const head = Q(.205, 27), sh = Q(.255, 18), hip = Q(.5, 12), knee = Q(.67, 33), ank = Q(.84, 14);   // (head close over his shoulders: a short neck)
+  const jk = crabJerk(), head = Q(.205, 27), sh = Q(.255, 18), hip = Q(.5, 12), knee = Q(.67, 33 + jk * 8), ank = Q(.84 - jk * .03, 14 + jk * 16);   // (head close over his shoulders: a short neck; jk: feet yanked up from the crab)
   const far = f => { g.save(); g.filter = 'brightness(.74)'; f(); g.restore(); };
   const limb = (col, w, ...pts) => { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(...pts[0]); if (pts.length === 3) g.quadraticCurveTo(...pts[1], ...pts[2]); else g.lineTo(...pts[1]); g.stroke(); };
   g.save(); g.lineCap = g.lineJoin = 'round';
@@ -202,18 +211,22 @@ function drawLounger(b, t, P) {
   limb(C.skin, 6, sh, [head[0] + 2 * s, head[1] + 5 * s]);
   g.fillStyle = C.skin; g.beginPath(); g.moveTo(sh[0] - 1 * s, sh[1] - 6 * s); g.lineTo(sh[0] + 7 * s, sh[1] - 2 * s); g.lineTo(sh[0] + 1 * s, sh[1] + 2 * s); g.closePath(); g.fill();   // the V of his open collar
   g.fillStyle = C.flower; g.beginPath(); g.moveTo(sh[0] - 1 * s, sh[1] - 6 * s); g.lineTo(sh[0] + 4 * s, sh[1] - 8 * s); g.lineTo(sh[0] + 3 * s, sh[1] - 3 * s); g.closePath(); g.fill();   // collar flap
-  b.headAt = head;   // (for his speech bubble)
-  g.save(); g.translate(...head); g.rotate(-.18); g.scale(s, s); drawBeachHead(b, t, .45, 1); g.restore();
+  b.headAt = head; b.feetAt = [ank[0] + 5 * s, ank[1]];   // (for his speech bubble, and the crab)
+  g.save(); g.translate(...head); g.rotate(-.18); g.scale(s, s); drawBeachHead(b, t, tropicLook() ?? .45, 1); g.restore();
   // his near arm and his drink: resting on his belly, or lifted to his mouth for a sip
   const p = b.sip, up = p.st === 'sip' ? (p.t < .7 ? ease(p.t / .7) : p.t < 1.9 ? 1 : 1 - ease((p.t - 1.9) / .7)) : 0;
   const rest = Q(.4, 22), mouth = [head[0] + 9 * s, head[1] + 3 * s], dk = [lrp(rest[0], mouth[0], up), lrp(rest[1], mouth[1], up)];
+  b.drinkAt = dk;
+  const gull = stage.ev && stage.ev.kind === 'gulldrink' && stage.ev.p >= .45;   // (the seagull has his drink)
   const shN = [sh[0] + 3 * s, sh[1] + 2 * s], elb = [lrp(sh[0], dk[0], .5) - 2 * s + up * 4 * s, Math.max(sh[1], dk[1]) + 6 * s - up * 4 * s];
   limb(C.shirt, 7, shN, [lrp(shN[0], elb[0], .5), lrp(shN[1], elb[1], .5)]);   // short sleeve
   limb(C.skin, 5, [lrp(shN[0], elb[0], .45), lrp(shN[1], elb[1], .45)], elb); limb(C.skin, 5, elb, [dk[0] - 4 * s, dk[1] + 3 * s]);
+  if (!gull) {
   g.fillStyle = C.coco; g.beginPath(); g.arc(dk[0], dk[1], 6 * s, 0, 7); g.fill();
   g.fillStyle = C.cocoIn; g.beginPath(); g.ellipse(dk[0], dk[1] - 4 * s, 4.6 * s, 1.6 * s, 0, 0, 7); g.fill();
   g.strokeStyle = C.straw; g.lineWidth = 1.4 * s; g.beginPath(); g.moveTo(dk[0] + 1 * s, dk[1] - 4 * s); g.lineTo(dk[0] - 4 * s, dk[1] - 13 * s); g.stroke();
   g.fillStyle = C.parasol; g.beginPath(); g.moveTo(dk[0] + 3 * s, dk[1] - 4 * s); g.lineTo(dk[0] + 7 * s, dk[1] - 14 * s); g.lineTo(dk[0] + 12 * s, dk[1] - 9 * s); g.closePath(); g.fill();   // little paper umbrella
+  }
   g.fillStyle = C.skin; g.beginPath(); g.arc(dk[0] - 4 * s, dk[1] + 3 * s, 2.8 * s, 0, 7); g.fill();   // his hand round the coconut
   g.restore();
 }
@@ -301,15 +314,15 @@ function drawTorches(b, t) {   // two tiki torches by the hut, lit in the evenin
 function tropicMinorTick(b, dt, t) {
   const N = b.next, gap = (lo, hi) => t + (SHOWCASE ? rnd(4, 10) : rnd(lo, hi)), calm = !/storm|hurricane|tornado|heavy|windy/.test(mode.kind), sx = Wd / 1920;
   if (b.pelican) { b.pelican.t += dt; if (b.pelican.t > b.pelican.dur) { b.pelican = null; N.pelican = gap(70, 160); } }
-  else if (t > N.pelican && flyOK() && !b.night) b.pelican = { t: 0, dur: 11, dir: Math.random() < .5 ? 1 : -1, dx: rnd(-.15, .15) };
+  else if (t > N.pelican && flyOK() && !b.night) b.pelican = { t: 0, dur: 11, dir: Math.random() < .5 ? 1 : -1, xf: Wd > Hd ? rnd(.08, .26) : rnd(.2, .8) };   // (xf: where it dives; on a wide screen in the open sea on the left, clear of the forecast boxes)
   if (b.boat) { b.boat.t += dt; if (b.boat.t > b.boat.dur) { b.boat = null; N.boat = gap(90, 200); } }
   else if (t > N.boat && calm) b.boat = { t: 0, dur: (Wd + 200 * sx) / (16 * Math.max(.6, sx)), dir: Math.random() < .5 ? 1 : -1, cat: Math.random() < .45 };
   if (b.surfer) { b.surfer.t += dt; if (b.surfer.t > b.surfer.dur) { b.surfer = null; N.surfer = gap(80, 180); } }
-  else if (t > N.surfer && calm && !b.night) b.surfer = { t: 0, dur: 9, dir: Math.random() < .5 ? 1 : -1 };
+  else if (t > N.surfer && calm && !b.night) b.surfer = { t: 0, dur: 9, dir: Wd > Hd || Math.random() < .5 ? 1 : -1 };   // (on a wide screen in from the left, in the open sea)
 }
 function drawPelican(b, t) {   // glides in high, folds and plunges into the sea with a splash, bobs up and flies off
   const P = b.pelican, u = P.t / P.dur, k = b.s * .8, sy = Hd / 1080, sea = b.top + 30 * sy, dir = P.dir;
-  const x0 = dir > 0 ? -60 : Wd + 60, xd = Wd * (.5 + P.dx), x1 = dir > 0 ? Wd + 60 : -60;
+  const x0 = dir > 0 ? -60 : Wd + 60, xd = Wd * P.xf, x1 = dir > 0 ? Wd + 60 : -60;
   let x, y, pose;   // pose: glide, dive, sit, fly
   if (u < .35) { x = lrp(x0, xd - dir * 40 * k, u / .35); y = Hd * .2 + Math.sin(u * 20) * 3 * sy; pose = 'glide'; }
   else if (u < .45) { const v = (u - .35) / .1; x = lrp(xd - dir * 40 * k, xd, v); y = lrp(Hd * .2, sea, v * v); pose = 'dive'; }
@@ -360,7 +373,7 @@ function drawTropicBoat(b, t) {   // a small sailboat or a catamaran on the hori
 }
 function drawSurfer(b, t) {   // riding a little curling wave in toward the beach, then fading out as it breaks
   const S2 = b.surfer, u = S2.t / S2.dur, k = b.s * .75, sy = Hd / 1080, dir = S2.dir;
-  const x = lrp(dir > 0 ? -60 : Wd + 60, dir > 0 ? Wd * .62 : Wd * .38, Math.min(1, u / .8)), base = lrp(b.top + 40 * sy, b.shore - 14 * sy, Math.min(1, u)) + Math.sin(t * 4) * 1.5 * sy;
+  const x = lrp(dir > 0 ? -60 : Wd + 60, Wd > Hd ? Wd * .44 : dir > 0 ? Wd * .7 : Wd * .3, Math.min(1, u / .8)), base = lrp(b.top + 40 * sy, b.shore - 14 * sy, Math.min(1, u)) + Math.sin(t * 4) * 1.5 * sy;
   const a = u < .8 ? 1 : 1 - (u - .8) / .2, C = b.C;
   g.save(); g.globalAlpha = a; g.lineCap = 'round';
   // the wave: a raised swell with a white crest curling over, behind him
@@ -424,7 +437,7 @@ function drawGullDrink(b, e, t) {   // swoops in from the right, snatches his co
 }
 function drawCrab(b, e, t) {   // scuttles in sideways from the right to under his feet, pinches a toe (.45-.55), scuttles off
   if (!b.feetAt) return;
-  const p = e.p, k = b.s * .9, [fx] = b.feetAt, gy = b.gy + 18 * b.s, xs = fx + 6 * k, x0 = Wd * (Wd > Hd ? .52 : 1.05);
+  const p = e.p, k = b.s * .9, [fx, fy] = b.feetAt, gy = Math.min(b.gy + 18 * b.s, fy + 30 * b.s), xs = fx + 6 * k, x0 = Wd * (Wd > Hd ? .52 : 1.05);
   let x, moving = true, reach = 0;
   if (p < .4) x = lrp(x0, xs, ease(p / .4));
   else if (p < .6) { x = xs; moving = false; reach = Math.max(0, Math.min(1, (p - .42) / .03, (.58 - p) / .03)); }
@@ -443,7 +456,7 @@ function drawCrab(b, e, t) {   // scuttles in sideways from the right to under h
 }
 const crabJerk = () => { const e = stage.ev; return e && e.kind === 'crab' ? Math.max(0, Math.min(1, (e.p - .44) / .03, (.62 - e.p) / .05)) : 0; };   // he yanks his feet up
 function drawTurtle(b, e, t) {   // a sea turtle crawls out of the surf, up the wet sand, rests, and heads back into the sea
-  const p = e.p, k = b.s * 1.1, x = b.ax + 170 * b.s, y0 = b.edge(x) + 4 * k, y1 = y0 + 40 * k;
+  const p = e.p, k = b.s * 1.1, x = b.ax + 120 * b.s, y0 = b.edge(x) + 4 * k, y1 = y0 + 24 * k;
   let y, dir = 1, moving = true;   // dir 1: facing up the beach (toward us)
   if (p < .35) y = lrp(y0, y1, ease(p / .35));
   else if (p < .6) { y = y1; moving = false; }
