@@ -151,25 +151,22 @@ function drawHammock(b, t) {
   }
   g.restore();
 }
-// him, lying back in the hammock, built like the fisherman and the camper (rounded limbs, no outlines, his far side a
-// little darker): head on the left end, one arm tucked behind it, sunglasses; a Hawaiian shirt and shorts following the
+// him, lying back in the hammock, built like the fisherman and the camper (rounded limbs, no outlines, his far leg a
+// little darker): head on the left end, sunglasses; a Hawaiian shirt and shorts following the
 // sag of the hammock; knees up and bare feet over the end; a coconut drink on his belly that he lifts for a sip now
 // and then. P(u): the hammock's curve, u 0 (left end) to 1 (right end).
 function drawLounger(b, t, P) {
   const C = b.C, s = b.s;
   const Q = (u, lift) => { const [x, y] = P(u); return [x, y - lift * s]; };   // a point on the cloth, raised by lift
-  const head = Q(.17, 26), sh = Q(.25, 17), hip = Q(.5, 12), knee = Q(.67, 33), ank = Q(.84, 14);
+  const head = Q(.205, 27), sh = Q(.255, 18), hip = Q(.5, 12), knee = Q(.67, 33), ank = Q(.84, 14);   // (head close over his shoulders: a short neck)
   const far = f => { g.save(); g.filter = 'brightness(.74)'; f(); g.restore(); };
   const limb = (col, w, ...pts) => { g.strokeStyle = col; g.lineWidth = w * s; g.beginPath(); g.moveTo(...pts[0]); if (pts.length === 3) g.quadraticCurveTo(...pts[1], ...pts[2]); else g.lineTo(...pts[1]); g.stroke(); };
   g.save(); g.lineCap = g.lineJoin = 'round';
-  // his far leg and his far arm (behind his head), a shade darker
+  // his far leg, a shade darker (his far arm is hidden behind him)
   far(() => {
     const k2 = [knee[0] - 4 * s, knee[1] - 3 * s], a2 = [ank[0] + 2 * s, ank[1] - 4 * s];
     limb(C.skin, 6.5, [hip[0], hip[1] - 2 * s], k2); limb(C.skin, 6, k2, a2);
     g.fillStyle = C.skin; g.beginPath(); g.ellipse(a2[0] + 4 * s, a2[1] - 2 * s, 5 * s, 2.6 * s, -.5, 0, 7); g.fill();   // foot
-    const el = [head[0] - 12 * s, head[1] - 12 * s];   // elbow up beside his head, hand tucked behind it
-    limb(C.shirt, 6.5, [sh[0] - 2 * s, sh[1] - 4 * s], [lrp(sh[0], el[0], .45), lrp(sh[1], el[1], .45)]);   // sleeve
-    limb(C.skin, 5, [lrp(sh[0], el[0], .4), lrp(sh[1], el[1], .4)], el); limb(C.skin, 5, el, [head[0] - 3 * s, head[1] - 2 * s]);
   });
   // the shirt: a body-shaped band along the hammock's curve from his shoulders to his hips, with a flower print
   const mid = Q(.37, 11), body = new Path2D(), N = 12, pts = [];
