@@ -24,7 +24,9 @@ function buildTropic() {
     inside: !!(sc.rain || sc.storm || sc.wind || sc.swirl || kind === 'heavysnow'), snowy: !!sc.snow,
     pa: ax - 105 * s, pb: ax + 105 * s, hx: ax - 238 * s,   // the two palms, and the hut
     wind: sc.swirl ? .09 : sc.tornado ? .08 : sc.wind ? .05 : sc.storm ? .03 : 0,
-    sip: { st: 'rest', t: 0, dur: rnd(6, 12) } };
+    sip: { st: 'rest', t: 0, dur: rnd(6, 12) }, pelican: null, boat: null, surfer: null };
+  { const now = performance.now() / 1000, first = (n, lo, hi) => now + (SHOWCASE || new RegExp('[?&]' + n + '\\b').test(location.search) ? rnd(2, 5) : rnd(lo, hi));
+    b.next = { pelican: first('pelican', 30, 90), boat: first('sailboat', 20, 70), surfer: first('surfer', 30, 90) }; }   // (the background events' first turns)
   // more palms at the sides of the screen, nearer to us: [across, below the beach line, height, lean, size, sway phase]
   b.sidePalms = portrait ? [[.05, 60, 300, 40, 1.2, 2.1], [.97, 80, 300, -40, 1.25, 6]]
     : [[.035, 60, 330, 40, 1.35, 2.1], [.12, 92, 270, -30, 1.2, 3.4], [.53, 40, 300, -35, 1.2, 4.2], [.8, 70, 340, 30, 1.35, 5], [.97, 100, 300, -40, 1.3, 6]];
@@ -68,7 +70,9 @@ function tropicBackdrop(b) {   // the sea, the island on the horizon and the bea
   return c;
 }
 function tropicTick(dt, t) {   // his drink: resting on his belly → up to his mouth for a sip → back down
+  tropicMinorTick(tropic, dt, t);
   const p = tropic.sip; p.t += dt;
+  if (stage.ev && stage.ev.kind === 'gulldrink') { p.st = 'rest'; p.t = 0; return; }   // (no sips while the gull's after his drink)
   if (p.st === 'rest' && p.t > p.dur) { p.st = 'sip'; p.t = 0; }
   else if (p.st === 'sip' && p.t > 2.6) { p.st = 'rest'; p.t = 0; p.dur = rnd(7, 13); if (Math.random() < .25) talk.react = 'snack'; }   // (now and then he says how good it was)
 }
@@ -288,3 +292,170 @@ function drawTorches(b, t) {   // two tiki torches by the hut, lit in the evenin
   }
 }
 
+
+/* ---------- the Tropical style's random events ---------- */
+// Major (one at a time, he reacts afterwards; see events.js): a coconut falls on his head, a seagull swoops off with his
+// drink, a crab pinches his toe, a sea turtle crawls up the beach. Minor (their own timers, alongside anything): a
+// pelican diving for fish, a sailboat or catamaran along the horizon, a surfer riding a wave in.
+// Testing: ?event=coconut (gulldrink, crab, turtle); ?pelican, ?sailboat, ?surfer bring those in a few seconds.
+function tropicMinorTick(b, dt, t) {
+  const N = b.next, gap = (lo, hi) => t + (SHOWCASE ? rnd(4, 10) : rnd(lo, hi)), calm = !/storm|hurricane|tornado|heavy|windy/.test(mode.kind), sx = Wd / 1920;
+  if (b.pelican) { b.pelican.t += dt; if (b.pelican.t > b.pelican.dur) { b.pelican = null; N.pelican = gap(70, 160); } }
+  else if (t > N.pelican && flyOK() && !b.night) b.pelican = { t: 0, dur: 11, dir: Math.random() < .5 ? 1 : -1, dx: rnd(-.15, .15) };
+  if (b.boat) { b.boat.t += dt; if (b.boat.t > b.boat.dur) { b.boat = null; N.boat = gap(90, 200); } }
+  else if (t > N.boat && calm) b.boat = { t: 0, dur: (Wd + 200 * sx) / (16 * Math.max(.6, sx)), dir: Math.random() < .5 ? 1 : -1, cat: Math.random() < .45 };
+  if (b.surfer) { b.surfer.t += dt; if (b.surfer.t > b.surfer.dur) { b.surfer = null; N.surfer = gap(80, 180); } }
+  else if (t > N.surfer && calm && !b.night) b.surfer = { t: 0, dur: 9, dir: Math.random() < .5 ? 1 : -1 };
+}
+function drawPelican(b, t) {   // glides in high, folds and plunges into the sea with a splash, bobs up and flies off
+  const P = b.pelican, u = P.t / P.dur, k = b.s * .8, sy = Hd / 1080, sea = b.top + 30 * sy, dir = P.dir;
+  const x0 = dir > 0 ? -60 : Wd + 60, xd = Wd * (.5 + P.dx), x1 = dir > 0 ? Wd + 60 : -60;
+  let x, y, pose;   // pose: glide, dive, sit, fly
+  if (u < .35) { x = lrp(x0, xd - dir * 40 * k, u / .35); y = Hd * .2 + Math.sin(u * 20) * 3 * sy; pose = 'glide'; }
+  else if (u < .45) { const v = (u - .35) / .1; x = lrp(xd - dir * 40 * k, xd, v); y = lrp(Hd * .2, sea, v * v); pose = 'dive'; }
+  else if (u < .62) { x = xd; y = sea + Math.sin(t * 3) * 1.5 * sy; pose = 'sit'; }
+  else { const v = (u - .62) / .38; x = lrp(xd, x1, v); y = lrp(sea, Hd * .16, Math.min(1, v * 2.5)); pose = 'fly'; }
+  if (u > .44 && u < .52) {   // the splash
+    const v = (u - .44) / .08; g.save(); g.globalAlpha = 1 - v; g.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = -3; i <= 3; i++) { g.beginPath(); g.arc(xd + i * 5 * k, sea - Math.sin(Math.PI * v) * (14 - Math.abs(i) * 3) * k, 2.2 * k, 0, 7); g.fill(); }
+    g.restore();
+  }
+  const col = b.golden ? '#6a5560' : '#ece8e0', dark = b.golden ? '#3a2a30' : '#4a4640', bill = '#e2a83a';
+  g.save(); g.translate(x, y); g.scale(dir * k, k); g.lineCap = 'round';
+  if (pose === 'dive') g.rotate(1.2);
+  if (pose === 'sit') {   // floating on the water, its pouch full
+    g.fillStyle = col; g.beginPath(); g.ellipse(0, -5, 13, 6, 0, 0, 7); g.fill();
+    g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.moveTo(8, -8); g.quadraticCurveTo(12, -18, 9, -22); g.stroke();
+    g.fillStyle = bill; g.beginPath(); g.moveTo(10, -23); g.lineTo(26, -18); g.quadraticCurveTo(16, -12, 10, -19); g.fill();
+    g.fillStyle = '#111'; g.beginPath(); g.arc(9.5, -23, .9, 0, 7); g.fill();
+  } else {
+    const w = pose === 'dive' ? .2 : Math.sin(t * (pose === 'fly' ? 7 : 2)) * (pose === 'glide' ? .25 : 1);
+    g.fillStyle = dark; g.beginPath(); g.moveTo(-2, -1); g.quadraticCurveTo(-8, -14 * w - 4, -20, -22 * w); g.quadraticCurveTo(-6, -6 * w, 4, 1); g.fill();   // far wing
+    g.fillStyle = col; g.beginPath(); g.ellipse(0, 0, 14, 5.5, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(12, -3, 4, 3.5, 0, 0, 7); g.fill();   // head, neck tucked in
+    g.fillStyle = bill; g.beginPath(); g.moveTo(14, -3); g.lineTo(32, 0); g.lineTo(14, 1); g.closePath(); g.fill();   // long bill
+    g.fillStyle = '#111'; g.beginPath(); g.arc(13, -4, .8, 0, 7); g.fill();
+    g.fillStyle = col; g.beginPath(); g.moveTo(-2, 0); g.quadraticCurveTo(-8, 14 * w + 4, -24, 22 * w); g.quadraticCurveTo(-6, 6 * w + 2, 5, 1); g.fill();   // near wing
+    g.fillStyle = dark; g.beginPath(); g.moveTo(-24, 22 * w); g.lineTo(-17, 18 * w + 1); g.lineTo(-19, 21 * w + 2); g.fill();   // dark wingtip
+  }
+  g.restore();
+}
+function drawTropicBoat(b, t) {   // a small sailboat or a catamaran on the horizon
+  const B = b.boat, u = B.t / B.dur, k = b.s * .55, x = lrp(B.dir > 0 ? -80 : Wd + 80, B.dir > 0 ? Wd + 80 : -80, u), y = b.top + 6 * Hd / 1080 + Math.sin(t * 1.2);
+  const hull = b.night ? '#2a3240' : '#f4f2ee', sail = b.night ? '#5a6272' : b.golden ? '#f2d8c8' : '#ffffff', stripe = b.night ? '#4a2a2a' : '#e2473b';
+  g.save(); g.translate(x, y); g.scale(B.dir * k, k);
+  if (B.cat) {   // two hulls under a deck, a tall mainsail and a jib
+    g.fillStyle = hull; g.fillRect(-26, -6, 52, 3); g.beginPath(); g.ellipse(-18, -3, 10, 3, 0, 0, 7); g.ellipse(18, -3, 10, 3, 0, 0, 7); g.fill();
+    g.fillStyle = sail; g.beginPath(); g.moveTo(-2, -8); g.lineTo(-2, -52); g.lineTo(-22, -8); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(2, -10); g.lineTo(2, -44); g.lineTo(20, -10); g.closePath(); g.fill();
+    g.fillStyle = stripe; g.fillRect(-12, -36, 10, 3);
+  } else {
+    g.fillStyle = hull; g.beginPath(); g.moveTo(-22, -6); g.lineTo(24, -6); g.lineTo(16, 2); g.lineTo(-16, 2); g.closePath(); g.fill();
+    g.fillStyle = stripe; g.fillRect(-18, -4, 38, 1.6);
+    g.fillStyle = sail; g.beginPath(); g.moveTo(0, -8); g.lineTo(0, -48); g.lineTo(-20, -8); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(3, -10); g.lineTo(3, -40); g.lineTo(18, -10); g.closePath(); g.fill();
+  }
+  g.strokeStyle = b.night ? '#3a4250' : '#6a6a6a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, -6); g.lineTo(0, -54); g.stroke();
+  g.restore();
+}
+function drawSurfer(b, t) {   // riding a little curling wave in toward the beach, then fading out as it breaks
+  const S2 = b.surfer, u = S2.t / S2.dur, k = b.s * .75, sy = Hd / 1080, dir = S2.dir;
+  const x = lrp(dir > 0 ? -60 : Wd + 60, dir > 0 ? Wd * .62 : Wd * .38, Math.min(1, u / .8)), base = lrp(b.top + 40 * sy, b.shore - 14 * sy, Math.min(1, u)) + Math.sin(t * 4) * 1.5 * sy;
+  const a = u < .8 ? 1 : 1 - (u - .8) / .2, C = b.C;
+  g.save(); g.globalAlpha = a; g.lineCap = 'round';
+  // the wave: a raised swell with a white crest curling over, behind him
+  g.fillStyle = b.P.sea1; g.beginPath(); g.moveTo(x - dir * 70 * k, base + 4 * k); g.quadraticCurveTo(x - dir * 30 * k, base - 22 * k, x + dir * 8 * k, base - 14 * k); g.quadraticCurveTo(x + dir * 22 * k, base - 8 * k, x + dir * 40 * k, base + 4 * k); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2.5 * k; g.beginPath(); g.moveTo(x - dir * 70 * k, base + 2 * k); g.quadraticCurveTo(x - dir * 30 * k, base - 24 * k, x + dir * 6 * k, base - 16 * k); g.quadraticCurveTo(x + dir * 2 * k, base - 8 * k, x - dir * 6 * k, base - 10 * k); g.stroke();
+  g.translate(x, base - 6 * k); g.scale(dir * k, k); g.rotate(-.08 + Math.sin(t * 2) * .05);
+  g.fillStyle = '#f6c84a'; g.beginPath(); g.ellipse(0, 0, 22, 3, 0, 0, 7); g.fill(); g.fillStyle = '#e2473b'; g.fillRect(-2, -1, 4, 2);   // board
+  g.strokeStyle = C.skin; g.lineWidth = 3.4;
+  g.beginPath(); g.moveTo(-6, -1); g.lineTo(-4, -10); g.lineTo(0, -16); g.moveTo(6, -1); g.lineTo(4, -10); g.lineTo(0, -16); g.stroke();   // legs, knees bent
+  g.strokeStyle = '#2a6aa8'; g.lineWidth = 5; g.beginPath(); g.moveTo(-3, -12); g.lineTo(3, -12); g.stroke();   // board shorts
+  g.strokeStyle = C.skin; g.lineWidth = 4.5; g.beginPath(); g.moveTo(0, -15); g.lineTo(1, -27); g.stroke();   // body
+  g.lineWidth = 2.6; g.beginPath(); g.moveTo(1, -25); g.lineTo(-10, -22); g.moveTo(1, -25); g.lineTo(11, -27); g.stroke();   // arms out for balance
+  g.fillStyle = C.skin; g.beginPath(); g.arc(2, -31, 3.6, 0, 7); g.fill(); g.fillStyle = '#e8c24a'; g.beginPath(); g.arc(1.4, -32.4, 3.6, Math.PI, 0); g.fill();   // head, blond hair
+  g.restore();
+}
+
+// ----- the major events, drawn from drawTropic -----
+function tropicLook() {   // where he looks during an event (or null)
+  const e = stage.ev; if (!e) return null;
+  if ((e.kind === 'crab' || e.kind === 'turtle') && e.p > .12 && e.p < .88) return .95;
+  if (e.kind === 'gulldrink' && e.p > .3 && e.p < .8) return e.p < .5 ? .6 : -.6;
+  return null;
+}
+function drawCoconutFall(b, e, t) {   // drops from the crown of the left palm onto his head (.35), bounces off onto the sand
+  if (!b.crownA || !b.headAt) return;
+  const p = e.p, k = b.s, [cx, cy] = b.crownA, [hx, hy] = b.headAt, gy = b.gy + 20 * k;
+  let x, y;
+  if (p < .15) { x = cx + 6 * k; y = cy + 6 * k + Math.sin(t * 25) * (p > .08 ? 2 : 0) * k; }   // wobbling up in the palm
+  else if (p < .35) { const v = (p - .15) / .2; x = lrp(cx + 6 * k, hx, v); y = lrp(cy + 6 * k, hy - 10 * k, v * v); }
+  else if (p < .55) { const v = (p - .35) / .2; x = hx + v * 50 * k; y = lrp(hy - 10 * k, gy, v) - Math.sin(Math.PI * v) * 30 * k; }
+  else { x = hx + 50 * k; y = gy; }
+  g.fillStyle = b.C.coconut; g.beginPath(); g.arc(x, y, 6 * k, 0, 7); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(x - 1.5 * k, y + 1.5 * k, 2 * k, 0, 7); g.fill();
+  if (p > .35 && p < .7) {   // stars round his head
+    for (let i = 0; i < 4; i++) {
+      const a = t * 4 + i * 1.57, sx2 = hx + Math.cos(a) * 14 * k, sy2 = hy - 12 * k + Math.sin(a) * 4 * k;
+      g.fillStyle = '#ffe14a'; g.beginPath(); for (let j = 0; j < 10; j++) { const r = j % 2 ? 1.2 * k : 3 * k, aa = j * Math.PI / 5; g.lineTo(sx2 + Math.cos(aa) * r, sy2 + Math.sin(aa) * r); } g.fill();
+    }
+  }
+  if (p > .36 && p < .5) drawSpeech('Ow!', hx, hy, Math.min(1, (p - .36) / .01, (.5 - p) / .01));
+}
+function drawGullDrink(b, e, t) {   // swoops in from the right, snatches his coconut (.45) and flies off with it
+  if (!b.drinkAt) return;
+  const p = e.p, k = b.s * 1.1, [dx, dy] = b.drinkAt, from = [Wd + 60, Hd * .15], to = [-60, Hd * .1];
+  let x, y;
+  if (p < .45) { const v = ease(p / .45); x = lrp(from[0], dx, v); y = lrp(from[1], dy - 10 * k, v) + Math.sin(Math.PI * v) * 30 * k; }
+  else if (p < .5) { x = dx; y = dy - 10 * k; }
+  else { const v = (p - .5) / .4; x = lrp(dx, to[0], v); y = lrp(dy - 10 * k, to[1], v) - Math.sin(Math.PI * v) * 20 * k; }
+  if (p > .9) return;
+  const S2 = 30 * k, w = p > .45 && p < .5 ? .3 : Math.sin(t * 9);
+  g.save(); g.translate(x, y); g.scale(-1, 1); g.fillStyle = b.night ? 'rgb(176,186,202)' : 'rgb(246,248,252)';
+  const wings = [wingPath(-1, S2, w), wingPath(1, S2, w)]; wings.forEach(pp => g.fill(pp));
+  g.beginPath(); g.ellipse(.02 * S2, .03 * S2, .22 * S2, .07 * S2, 0, 0, 7); g.fill(); g.beginPath(); g.arc(.2 * S2, .015 * S2, .07 * S2, 0, 7); g.fill();
+  g.fillStyle = '#e8b830'; g.beginPath(); g.moveTo(.26 * S2, 0); g.lineTo(.34 * S2, .02 * S2); g.lineTo(.26 * S2, .04 * S2); g.fill();
+  for (const sg of [-1, 1]) { g.save(); g.clip(wings[(sg + 1) / 2]); g.fillStyle = '#2a2d36'; g.beginPath(); g.arc(sg * S2, -w * .5 * S2, .2 * S2, 0, 7); g.fill(); g.restore(); }
+  if (p >= .45) {   // his coconut in its feet
+    g.fillStyle = b.C.coco; g.beginPath(); g.arc(.05 * S2, .22 * S2, 5 * b.s, 0, 7); g.fill();
+    g.fillStyle = b.C.parasol; g.beginPath(); g.moveTo(.1 * S2, .1 * S2); g.lineTo(.18 * S2, -.05 * S2); g.lineTo(.24 * S2, .08 * S2); g.fill();
+  }
+  g.restore();
+}
+function drawCrab(b, e, t) {   // scuttles in sideways from the right to under his feet, pinches a toe (.45-.55), scuttles off
+  if (!b.feetAt) return;
+  const p = e.p, k = b.s * .9, [fx] = b.feetAt, gy = b.gy + 18 * b.s, xs = fx + 6 * k, x0 = Wd * (Wd > Hd ? .52 : 1.05);
+  let x, moving = true, reach = 0;
+  if (p < .4) x = lrp(x0, xs, ease(p / .4));
+  else if (p < .6) { x = xs; moving = false; reach = Math.max(0, Math.min(1, (p - .42) / .03, (.58 - p) / .03)); }
+  else x = lrp(xs, x0, ease((p - .6) / .35));
+  const col = b.night ? '#6a2a24' : '#e2512e', dark = b.night ? '#4a1c18' : '#b83a1e';
+  g.save(); g.translate(x, gy - (moving ? Math.abs(Math.sin(t * 22)) * 1.5 * k : 0)); g.scale(k, k); g.lineCap = 'round';
+  g.strokeStyle = dark; g.lineWidth = 1.6;
+  for (const sg of [-1, 1]) for (let i = 0; i < 3; i++) { const sw = moving ? Math.sin(t * 22 + i * 2 + sg) * 2 : 0; g.beginPath(); g.moveTo(sg * 6, -3 + i * 1.5); g.lineTo(sg * 11 + sw, -6 + i * 3); g.lineTo(sg * 13 + sw, 1 + i); g.stroke(); }   // legs
+  g.fillStyle = col; g.beginPath(); g.ellipse(0, -5, 9, 5.5, 0, 0, 7); g.fill();   // shell
+  g.strokeStyle = col; g.lineWidth = 2.4;   // claws, the left one reaching up to his toe
+  g.beginPath(); g.moveTo(6, -7); g.lineTo(11, -12); g.stroke(); g.fillStyle = col; g.beginPath(); g.ellipse(12, -14, 3, 2.2, -.6, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(-6, -7); g.lineTo(lrp(-10, -4, reach), lrp(-12, -26, reach)); g.stroke(); g.beginPath(); g.ellipse(lrp(-11, -4, reach), lrp(-14, -29, reach), 3.2, 2.2, -.4, 0, 7); g.fill();
+  g.fillStyle = '#111'; for (const ex of [-2.5, 2.5]) { g.fillRect(ex - .4, -12, .8, 3); g.beginPath(); g.arc(ex, -12.5, 1.1, 0, 7); g.fill(); }   // eyes on stalks
+  g.restore();
+  if (p > .46 && p < .58 && b.headAt) drawSpeech('Yeowch!', ...b.headAt, Math.min(1, (p - .46) / .01, (.58 - p) / .01));
+}
+const crabJerk = () => { const e = stage.ev; return e && e.kind === 'crab' ? Math.max(0, Math.min(1, (e.p - .44) / .03, (.62 - e.p) / .05)) : 0; };   // he yanks his feet up
+function drawTurtle(b, e, t) {   // a sea turtle crawls out of the surf, up the wet sand, rests, and heads back into the sea
+  const p = e.p, k = b.s * 1.1, x = b.ax + 170 * b.s, y0 = b.edge(x) + 4 * k, y1 = y0 + 40 * k;
+  let y, dir = 1, moving = true;   // dir 1: facing up the beach (toward us)
+  if (p < .35) y = lrp(y0, y1, ease(p / .35));
+  else if (p < .6) { y = y1; moving = false; }
+  else { y = lrp(y1, y0 - 4 * k, ease((p - .6) / .35)); dir = -1; }
+  const a = p > .9 ? 1 - (p - .9) / .1 : Math.min(1, p / .05), line = b.night ? '#2a3a2a' : '#4a6a2a', shell = b.night ? '#2a2a1e' : '#6a5230', skin = b.night ? '#3a4a3a' : '#7a9a5a';
+  const pad = moving ? Math.sin(t * 5) : 0;
+  g.save(); g.globalAlpha = a; g.translate(x, y); g.scale(k, k);
+  g.fillStyle = skin;   // flippers
+  for (const [fx, fy, sg] of [[-12, -2, -1], [12, -2, 1], [-9, 8, -1], [9, 8, 1]]) { g.beginPath(); g.ellipse(fx + sg * pad * 1.5, fy + (fy < 0 ? -pad : pad), 6, 2.6, sg * (fy < 0 ? -.5 : .4), 0, 7); g.fill(); }
+  g.beginPath(); g.ellipse(0, dir > 0 ? 13 : -13, 4.2, 5, 0, 0, 7); g.fill();   // head, the way it's going
+  if (dir > 0) { g.fillStyle = '#111'; g.beginPath(); g.arc(-1.8, 15, .7, 0, 7); g.arc(1.8, 15, .7, 0, 7); g.fill(); }
+  g.fillStyle = shell; g.beginPath(); g.ellipse(0, 2, 11, 12, 0, 0, 7); g.fill();
+  g.strokeStyle = line; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -9); g.lineTo(0, 13); g.moveTo(-9, -3); g.lineTo(9, 7); g.moveTo(9, -3); g.lineTo(-9, 7); g.stroke();   // shell plates
+  g.restore();
+}
